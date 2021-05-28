@@ -24,10 +24,10 @@ type User struct {
 	Id           int64   `db:"id"`
 	Account      string  `db:"Account"`
 	Password     string  `db:"Password"`
-	normal_Money float64 `db:"normal_Money"`
-	normal_Coin  float64 `db:"normal_Coin"`
-	lock_money   float64 `db:"lock_money"`
-	lock_coin    float64 `db:"lock_coin"`
+	Normal_Money float64 `db:"normal_Money"`
+	Normal_Coin  float64 `db:"normal_Coin"`
+	Lock_money   float64 `db:"lock_money"`
+	Lock_coin    float64 `db:"lock_coin"`
 }
 
 func Connect() {
@@ -55,19 +55,19 @@ func Checkfile(Account string) User {
 	var a User
 	user := new(User)
 	row := MysqlDb.QueryRow("select * from Account where Account=?", Account)
-	if err := row.Scan(&user.Id, &user.Account, &user.Password, &user.normal_Money, &user.normal_Coin, &user.lock_money, &user.lock_money); err != nil {
+	if err := row.Scan(&user.Id, &user.Account, &user.Password, &user.Normal_Money, &user.Normal_Coin, &user.Lock_money, &user.Lock_coin); err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 		//return
 	}
-	fmt.Println(user.Id, user.Account, user.Password, user.normal_Money, user.normal_Coin)
+	fmt.Println(user.Id, user.Account, user.Password, user.Normal_Money, user.Normal_Coin, user.Lock_money, user.Lock_coin)
 	a.Id = user.Id
 	a.Account = user.Account
 	a.Password = user.Password
-	a.normal_Money = user.normal_Money
-	a.normal_Coin = user.normal_Coin
-	a.lock_money = user.lock_money
-	a.lock_coin = user.lock_coin
-	fmt.Println(a.Id)
+	a.Normal_Money = user.Normal_Money
+	a.Normal_Coin = user.Normal_Coin
+	a.Lock_money = user.Lock_money
+	a.Lock_coin = user.Lock_coin
+	fmt.Println(a)
 
 	return a
 
@@ -112,13 +112,19 @@ func Write_info(Account string, Money float64, Coin float64, lock_money float64,
 	}
 }
 
-func Create_order(Account string, price float64, volume float64, side string, status string, time time.Time) {
-	_, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time) values(?,?,?,?,?,?)", Account, price,
+func Create_order(Account string, price float64, volume float64, side string, status string, time int64) int64 {
+	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time) values(?,?,?,?,?,?)", Account, price,
 		volume, side, status, time)
 	if err != nil {
 		panic(err)
 	}
+	id, err := results.LastInsertId()
+	if err != nil {
+		panic(err)
+		return 0
+	}
 
+	return id
 }
 
 func deel_order(price float64, volume float64, side string, time time.Time, buyer string, seller string) {

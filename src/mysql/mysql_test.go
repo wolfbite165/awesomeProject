@@ -1,8 +1,12 @@
 package mysql
 
-import "testing"
+import (
+	"fmt"
+	"testing"
+)
 
 func Test_mysql(t *testing.T) {
 	Connect()
-	Checkfile("SSS")
+	a := Checkfile("handsome").Lock_money
+	fmt.Println(a)
 }
