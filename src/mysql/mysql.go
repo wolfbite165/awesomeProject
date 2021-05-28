@@ -21,11 +21,13 @@ const (
 )
 
 type User struct {
-	Id       int64   `db:"id"`
-	Account  string  `db:"Account"`
-	Password string  `db:"Password"`
-	Money    float64 `db:"Money"`
-	Coin     float64 `db:"Coin"`
+	Id           int64   `db:"id"`
+	Account      string  `db:"Account"`
+	Password     string  `db:"Password"`
+	normal_Money float64 `db:"normal_Money"`
+	normal_Coin  float64 `db:"normal_Coin"`
+	lock_money   float64 `db:"lock_money"`
+	lock_coin    float64 `db:"lock_coin"`
 }
 
 func Connect() {
@@ -53,16 +55,18 @@ func Checkfile(Account string) User {
 	var a User
 	user := new(User)
 	row := MysqlDb.QueryRow("select * from Account where Account=?", Account)
-	if err := row.Scan(&user.Id, &user.Account, &user.Password, &user.Money, &user.Coin); err != nil {
+	if err := row.Scan(&user.Id, &user.Account, &user.Password, &user.normal_Money, &user.normal_Coin, &user.lock_money, &user.lock_money); err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 		//return
 	}
-	fmt.Println(user.Id, user.Account, user.Password, user.Money, user.Coin)
+	fmt.Println(user.Id, user.Account, user.Password, user.normal_Money, user.normal_Coin)
 	a.Id = user.Id
 	a.Account = user.Account
 	a.Password = user.Password
-	a.Money = user.Money
-	a.Coin = user.Coin
+	a.normal_Money = user.normal_Money
+	a.normal_Coin = user.normal_Coin
+	a.lock_money = user.lock_money
+	a.lock_coin = user.lock_coin
 	fmt.Println(a.Id)
 
 	return a
@@ -86,12 +90,22 @@ func Write_account(Account string, Password string) bool {
 
 }
 
-func Write_info(Account string, Money float64, Coin float64) {
-	_, err := MysqlDb.Exec("UPDATE Account set Money=? where Account=?", Money, Account)
+func Write_info(Account string, Money float64, Coin float64, lock_money float64, lock_coin float64) {
+	_, err := MysqlDb.Exec("UPDATE Account set normal_Money=? where Account=?", Money, Account)
 	if err != nil {
 		fmt.Println(err)
 	}
-	_, err = MysqlDb.Exec("UPDATE Account set Coin=? where Account=?", Coin, Account)
+	_, err = MysqlDb.Exec("UPDATE Account set normal_Coin=? where Account=?", Coin, Account)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = MysqlDb.Exec("UPDATE Account set lock_coin=? where Account=?", lock_coin, Account)
+
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = MysqlDb.Exec("UPDATE Account set lock_money=? where Account=?", lock_money, Account)
 
 	if err != nil {
 		fmt.Println(err)
