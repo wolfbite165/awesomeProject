@@ -29,6 +29,11 @@ type User struct {
 	Lock_money   float64 `db:"lock_money"`
 	Lock_coin    float64 `db:"lock_coin"`
 }
+type Find struct {
+	price   float64 `db:"price"`
+	volume  float64 `db:"volume"`
+	account float64 `db:"account"`
+}
 
 func Connect() {
 	dbDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", USER_NAME, PASS_WORD, HOST, PORT, DATABASE)
@@ -127,10 +132,31 @@ func Create_order(Account string, price float64, volume float64, side string, st
 	return id
 }
 
-func deel_order(price float64, volume float64, side string, time time.Time, buyer string, seller string) {
+func deel_order(price float64, volume float64, side string, time int64, buyer string, seller string) {
 	_, err := MysqlDb.Exec("insert INTO trade(price,volume,side,time,buyer,seller) values(?,"+
 		"?,?,?,?,?)", price, volume, side, time, buyer, seller)
 	if err != nil {
 		panic(err)
 	}
+}
+
+//func Find_order(side string, price float64) {
+//	//order := []Find
+//	var order []Find
+//	if side == "sell" {
+//		row := MysqlDb.QueryRow("select price, volume, account from orders where `status`=? and price>=? and side=?","online",
+//			price,"buy")
+//		if err := row.Scan(&order.price, &order.volume, &order.account); err != nil {
+//			fmt.Printf("scan failed, err:%v", err)
+//		}
+//	}
+//
+//}
+
+func Cancel_order(id int64) {
+	_, err := MysqlDb.Exec("UPDATE orders set status=? where id=?", "canceled", id)
+	if err != nil {
+		panic(err)
+	}
+
 }
