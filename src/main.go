@@ -187,14 +187,6 @@ func create_order(c *gin.Context) {
 
 }
 
-//func deal_order(price float64, volume float64, side string) {
-//	mysql.Connect()
-//	if side == "sell" {
-//
-//	}
-//
-//}
-
 func Get_oppen_order(c *gin.Context) {
 	mysql.Connect()
 	account := c.Query("account")
@@ -219,7 +211,10 @@ func Cancel_order(c *gin.Context) {
 	mysql.Connect()
 	account := c.Query("account")
 	id, err := strconv.ParseInt(c.Query("id"), 0, 64)
+	s := mysql.Check_order_info(account, id)
+	d := mysql.Checkfile(account)
 	a := mysql.Check_same_account(account)
+	use := s.Price * s.Volume
 	if a != true {
 		c.JSON(200, gin.H{
 			"code":    1001,
@@ -235,6 +230,13 @@ func Cancel_order(c *gin.Context) {
 		})
 		return
 	}
+	if s.Status != "online" {
+		c.JSON(200, gin.H{
+			"code":    1001,
+			"message": "wrong status",
+		})
+		return
+	}
 	bb := mysql.Cancel_order(account, id)
 	if bb != nil {
 		c.JSON(200, gin.H{
@@ -247,6 +249,18 @@ func Cancel_order(c *gin.Context) {
 			"code":    200,
 			"message": "success",
 		})
+		if s.Side == "sell" {
+			mysql.Write_info(account, d.Normal_Money, d.Normal_Coin+s.Volume, d.Lock_money, d.Lock_coin-s.Volume)
+		} else {
+			mysql.Write_info(account, d.Normal_Money+use, d.Normal_Coin, d.Lock_money-use, d.Lock_coin)
+		}
 
 	}
+}
+
+func Deal_orders(sleep float64) {
+	for {
+
+	}
+
 }

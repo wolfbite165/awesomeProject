@@ -56,6 +56,12 @@ type Deal_order struct {
 	Volume  float64
 	account string
 }
+type Orders struct {
+	Id      int64
+	Price   float64
+	Volume  float64
+	Account string
+}
 
 func Connect() {
 	dbDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", USER_NAME, PASS_WORD, HOST, PORT, DATABASE)
@@ -104,20 +110,21 @@ func Get_open(Account string) []Open_order {
 
 func Check_order_info(account string, id int64) Order {
 	var a Order
-	order := new(Order)
+	orders := new(Order)
 	row := MysqlDb.QueryRow("select * from orders where Account=? and id=?", account, id)
-	if err := row.Scan(&order.Id, &order.Account, &order.Password, &order.Normal_Money, &order.Normal_Coin, &order.Lock_money, &order.Lock_coin); err != nil {
+	if err := row.Scan(&orders.Id, &orders.Price, &orders.Volume, &orders.Side, &orders.Status, &orders.Time, &orders.Account, &orders.User_id); err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 		//return
 	}
-	fmt.Println(order.Id, order.Account, order.Price, order.Side, order.Normal_Coin, order.Lock_money, order.Lock_coin)
-	a.Id = order.Id
-	a.Account = order.Account
-	a.Password = order.Password
-	a.Normal_Money = order.Normal_Money
-	a.Normal_Coin = order.Normal_Coin
-	a.Lock_money = order.Lock_money
-	a.Lock_coin = order.Lock_coin
+	//fmt.Println(order.Id, order.Account, order.Price, order.Volume, order.Normal_Coin, order.Lock_money, order.Lock_coin)
+	a.Id = orders.Id
+	a.Account = orders.Account
+	a.Price = orders.Price
+	a.Side = orders.Side
+	a.Time = orders.Time
+	a.Status = orders.Status
+	a.User_id = orders.User_id
+	a.Volume = orders.Volume
 	fmt.Println(a)
 
 	return a
@@ -219,23 +226,46 @@ func Deel_order(price float64, side string) {
 
 }
 
-//func Find_order(side string, price float64) {
-//	//order := []Find
-//	var order []Find
-//	if side == "sell" {
-//		row := MysqlDb.QueryRow("select price, volume, account from orders where `status`=? and price>=? and side=?","online",
-//			price,"buy")
-//		if err := row.Scan(&order.price, &order.volume, &order.account); err != nil {
-//			fmt.Printf("scan failed, err:%v", err)
-//		}
-//	}
-//
-//}
-
 func Cancel_order(account string, id int64) error {
 	_, err := MysqlDb.Exec("UPDATE orders set status=? where id=? and account=?", "canceled", id, account)
 	if err != nil {
 		panic(err)
 	}
 	return err
+}
+
+func Get_side_info() {
+	var buy []Orders
+	var sell []Orders
+	rows, err := MysqlDb.Query("SELECT id, price, volume, account  FROM orders where `status`=? and side=? ORDER BY price, `time` ", "online", "buy")
+	if err != nil {
+		log.Println(err)
+	}
+	for rows.Next() {
+		var Id int64
+		var Price float64
+		var Volume float64
+		var account string
+		err := rows.Scan(&Id, &Price, &Volume, &account)
+		if err != nil {
+			log.Println(err)
+		}
+		buy = append(buy, Orders{Id, Price, Volume, account})
+	}
+	row, err := MysqlDb.Query("SELECT id, price, volume, account  FROM orders where `status`=? and side=? ORDER BY price, `time` ", "online", "sell")
+	if err != nil {
+		log.Println(err)
+	}
+	for row.Next() {
+		var Id int64
+		var Price float64
+		var Volume float64
+		var account string
+		err := row.Scan(&Id, &Price, &Volume, &account)
+		if err != nil {
+			log.Println(err)
+		}
+		sell = append(sell, Orders{Id, Price, Volume, account})
+	}
+
 }
