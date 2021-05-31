@@ -234,10 +234,10 @@ func Cancel_order(account string, id int64) error {
 	return err
 }
 
-func Get_side_info() {
-	var buy []Orders
-	var sell []Orders
-	rows, err := MysqlDb.Query("SELECT id, price, volume, account  FROM orders where `status`=? and side=? ORDER BY price, `time` ", "online", "buy")
+func Get_side_info() ([]Order, []Order) {
+	var buy []Order
+	var sell []Order
+	rows, err := MysqlDb.Query("SELECT * FROM orders where `status`=? and side=? ORDER BY price DESC, `time` ", "online", "buy")
 	if err != nil {
 		log.Println(err)
 	}
@@ -245,14 +245,20 @@ func Get_side_info() {
 		var Id int64
 		var Price float64
 		var Volume float64
+		var side string
+		var status string
+		var Time int64
 		var account string
-		err := rows.Scan(&Id, &Price, &Volume, &account)
+		var user_id int64
+
+		err := rows.Scan(&Id, &Price, &Volume, &side, &status, &Time, &account, &user_id)
 		if err != nil {
 			log.Println(err)
 		}
-		buy = append(buy, Orders{Id, Price, Volume, account})
+		buy = append(buy, Order{Id, Price, Volume, side, status, Time, account, user_id})
+		fmt.Println(buy)
 	}
-	row, err := MysqlDb.Query("SELECT id, price, volume, account  FROM orders where `status`=? and side=? ORDER BY price, `time` ", "online", "sell")
+	row, err := MysqlDb.Query("SELECT * FROM orders where `status`=? and side=? ORDER BY price, `time` ", "online", "sell")
 	if err != nil {
 		log.Println(err)
 	}
@@ -260,12 +266,53 @@ func Get_side_info() {
 		var Id int64
 		var Price float64
 		var Volume float64
+		var side string
+		var status string
+		var Time int64
 		var account string
-		err := row.Scan(&Id, &Price, &Volume, &account)
+		var user_id int64
+
+		err := row.Scan(&Id, &Price, &Volume, &side, &status, &Time, &account, &user_id)
 		if err != nil {
 			log.Println(err)
 		}
-		sell = append(sell, Orders{Id, Price, Volume, account})
-	}
+		sell = append(sell, Order{Id, Price, Volume, side, status, Time, account, user_id})
+		fmt.Println(sell)
 
+	}
+	fmt.Println(buy, sell)
+
+	return buy, sell
 }
+
+//
+//var leftOrder Order
+//sellIndex := 0
+//buyIndex := 1
+//var okIds []int
+//
+//leftOrder = buy[buyIndex]
+//for {
+//	if len(sell) == sellIndex + 1 &&  len(buy) == buyIndex + 1 && sell[sellIndex].Price > buy[buyIndex].Price {
+//		break
+//	}
+//
+//	if leftOrder.Side == "buy" {
+//		if sell[sellIndex].Volume > leftOrder.Volume{
+//
+//			sell[sellIndex].Volume -= leftOrder.Volume
+//			leftOrder = sell[sellIndex]
+//		} else {
+//
+//
+//
+//
+//			sellIndex++
+//		}
+//
+//	} else if leftOrder.Side == "sell"{
+//
+//	} else {
+//		return err
+//	}
+//}

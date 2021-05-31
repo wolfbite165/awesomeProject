@@ -259,8 +259,7 @@ func Cancel_order(c *gin.Context) {
 }
 
 func Deal_orders(sleep float64) {
-	for {
-
-	}
+	var leftOrder mysql.Order
+	buy, sell := mysql.Get_side_info()
 
 }
