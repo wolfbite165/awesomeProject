@@ -117,7 +117,18 @@ func create_order(c *gin.Context) {
 	account := c.Query("account")
 	info := mysql.Checkfile(account)
 	use := price * volume
+	fmt.Println("price=?", price)
+	fmt.Println("volume=?", volume)
+	fmt.Println("use=?", use)
+	fmt.Println("normal=?", info.Normal_Money)
 	fmt.Println(info.Lock_money)
+	if price == 0 || volume == 0 {
+		c.JSON(200, gin.H{
+			"code":    1006,
+			"message": "wrong price or volume",
+		})
+
+	}
 
 	if side != "sell" && side != "buy" {
 		c.JSON(200, gin.H{
@@ -148,7 +159,7 @@ func create_order(c *gin.Context) {
 
 			}
 			if side == "buy" {
-				if use > info.Normal_Coin {
+				if use > info.Normal_Money {
 					c.JSON(200, gin.H{
 						"code":  1001,
 						"error": "not enough money",

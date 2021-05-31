@@ -35,21 +35,26 @@ type Find struct {
 	account float64 `db:"account"`
 }
 type Order struct {
-	Id      int64  `db:"id"`
-	Price   float64  `db:"price"`
-	Volume  float64  `db:"volume"`
-	Side    string `db:"side"`
-	Status  string `db:"status"`
-	Time    int64  `db:"time"`
-	Account string `db:"account"`
-	User_id int64  `db:"user_id"`
+	Id      int64   `db:"id"`
+	Price   float64 `db:"price"`
+	Volume  float64 `db:"volume"`
+	Side    string  `db:"side"`
+	Status  string  `db:"status"`
+	Time    int64   `db:"time"`
+	Account string  `db:"account"`
+	User_id int64   `db:"user_id"`
 }
 type Open_order struct {
-	Id   int64
+	Id     int64
 	Price  float64
 	Volume float64
 	Side   string
 	Time   int64
+}
+type Deal_order struct {
+	Price   float64
+	Volume  float64
+	account string
 }
 
 func Connect() {
@@ -72,10 +77,10 @@ func Connect() {
 		panic("数据库链接失败: " + MysqlDbErr.Error())
 	}
 }
-func Get_open(Account string) []Open_order  {
+func Get_open(Account string) []Open_order {
 	var a Open_order
 	orders := new(Order)
-	row, err := MysqlDb.Query("select * from orders where account=? and status=?", Account,"online")
+	row, err := MysqlDb.Query("select * from orders where account=? and status=?", Account, "online")
 	if err != nil {
 		log.Println(err)
 	}
@@ -97,7 +102,26 @@ func Get_open(Account string) []Open_order  {
 	return ss
 }
 
+func Check_order_info(account string, id int64) Order {
+	var a Order
+	order := new(Order)
+	row := MysqlDb.QueryRow("select * from orders where Account=? and id=?", account, id)
+	if err := row.Scan(&order.Id, &order.Account, &order.Password, &order.Normal_Money, &order.Normal_Coin, &order.Lock_money, &order.Lock_coin); err != nil {
+		fmt.Printf("scan failed, err:%v", err)
+		//return
+	}
+	fmt.Println(order.Id, order.Account, order.Price, order.Side, order.Normal_Coin, order.Lock_money, order.Lock_coin)
+	a.Id = order.Id
+	a.Account = order.Account
+	a.Password = order.Password
+	a.Normal_Money = order.Normal_Money
+	a.Normal_Coin = order.Normal_Coin
+	a.Lock_money = order.Lock_money
+	a.Lock_coin = order.Lock_coin
+	fmt.Println(a)
 
+	return a
+}
 func Checkfile(Account string) User {
 	var a User
 	user := new(User)
@@ -174,15 +198,24 @@ func Create_order(Account string, price float64, volume float64, side string, st
 	return id
 }
 
-func deel_order(account string,price float64, volume float64, side string, time int64, buyer string, seller string) {
-	if side =="sell"{
-		row, err := MysqlDb.Query("select price, volume, account from orders where `status`=? and price>=? and side=?","online",
-		price,"buy")
-		if err!= nil{
+func Deel_order(price float64, side string) {
+	if side == "sell" {
+		row, err := MysqlDb.Query("select price, volume, account from orders where `status`=? and price>=? and side=?", "online",
+			price, "buy")
+		if err != nil {
 			log.Println(err)
 		}
+		for row.Next() {
+			var price1 float64
+			var volume float64
+			var account string
+			err := row.Scan(&price1, &volume, &account)
+			if err != nil {
+				log.Println(err)
+			}
+			fmt.Println(price1, volume, account)
+		}
 	}
-
 
 }
 
@@ -199,12 +232,10 @@ func deel_order(account string,price float64, volume float64, side string, time 
 //
 //}
 
-func Cancel_order(account string,id int64) error{
-	_, err := MysqlDb.Exec("UPDATE orders set status=? where id=? and account=?", "canceled", id,account)
+func Cancel_order(account string, id int64) error {
+	_, err := MysqlDb.Exec("UPDATE orders set status=? where id=? and account=?", "canceled", id, account)
 	if err != nil {
 		panic(err)
 	}
-			return err
+	return err
 }
-
-\
