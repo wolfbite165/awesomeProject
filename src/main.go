@@ -23,7 +23,8 @@ func main() {
 	router.POST("/deposit", doposit)
 	order := router.Group("/order")
 	order.POST("/create_order", create_order)
-	//order.POST("/cancel_order", cancel)
+	order.POST("/get_open_order", Get_oppen_order)
+	order.POST("/cancel_order", Cancel_order)
 	router.Run()
 }
 
@@ -137,7 +138,7 @@ func create_order(c *gin.Context) {
 
 				} else {
 					mysql.Write_info(account, info.Normal_Money, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin+volume)
-					id := mysql.Create_order(account, price, volume, side, "online", t)
+					id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
 					c.JSON(200, gin.H{
 						"code":     200,
 						"message":  "success",
@@ -154,7 +155,7 @@ func create_order(c *gin.Context) {
 					})
 				} else {
 					mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin, info.Lock_money+use, info.Lock_coin)
-					id := mysql.Create_order(account, price, volume, side, "online", t)
+					id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
 					c.JSON(200, gin.H{
 						"code":     200,
 						"message":  "success",
@@ -174,16 +175,67 @@ func create_order(c *gin.Context) {
 	}
 
 }
-func deal_order(price float64, volume float64, side string) {
+
+//func deal_order(price float64, volume float64, side string) {
+//	mysql.Connect()
+//	if side == "sell" {
+//
+//	}
+//
+//}
+
+func Get_oppen_order(c *gin.Context) {
 	mysql.Connect()
-	if side == "sell" {
+	account := c.Query("account")
+	a := mysql.Check_same_account(account)
+	if a != true {
+		c.JSON(200, gin.H{
+			"code":    1001,
+			"message": "account not found",
+		})
+		return
 
 	}
+	b := mysql.Get_open(account)
+	c.JSON(200, gin.H{
+		"code": 200,
+		"data": b,
+	})
 
 }
 
-func cancel_order(c *gin.Context) {
+func Cancel_order(c *gin.Context) {
+	mysql.Connect()
 	account := c.Query("account")
-	order_id, _ := strconv.ParseInt(c.Query("id"), 0, 64)
+	id, err := strconv.ParseInt(c.Query("id"), 0, 64)
+	a := mysql.Check_same_account(account)
+	if a != true {
+		c.JSON(200, gin.H{
+			"code":    1001,
+			"message": "account not found",
+		})
+		return
 
+	}
+	if err != nil {
+		c.JSON(200, gin.H{
+			"code":    1001,
+			"message": "wrong id",
+		})
+		return
+	}
+	bb := mysql.Cancel_order(account, id)
+	if bb != nil {
+		c.JSON(200, gin.H{
+			"code":    1001,
+			"message": "wrong id",
+		})
+		return
+	} else {
+		c.JSON(200, gin.H{
+			"code":    200,
+			"message": "success",
+		})
+
+	}
 }

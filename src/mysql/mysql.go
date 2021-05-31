@@ -13,10 +13,10 @@ var MysqlDbErr error
 
 const (
 	USER_NAME = "root"
-	PASS_WORD = "BlockPulse"
-	HOST      = "81.69.224.151"
+	PASS_WORD = "yyf262518"
+	HOST      = "127.0.0.1"
 	PORT      = "3306"
-	DATABASE  = "Account"
+	DATABASE  = "account"
 	//CHARSET   = "utf8"
 )
 
@@ -33,6 +33,23 @@ type Find struct {
 	price   float64 `db:"price"`
 	volume  float64 `db:"volume"`
 	account float64 `db:"account"`
+}
+type Order struct {
+	Id      int64  `db:"id"`
+	Price   float64  `db:"price"`
+	Volume  float64  `db:"volume"`
+	Side    string `db:"side"`
+	Status  string `db:"status"`
+	Time    int64  `db:"time"`
+	Account string `db:"account"`
+	User_id int64  `db:"user_id"`
+}
+type Open_order struct {
+	Id   int64
+	Price  float64
+	Volume float64
+	Side   string
+	Time   int64
 }
 
 func Connect() {
@@ -55,6 +72,31 @@ func Connect() {
 		panic("数据库链接失败: " + MysqlDbErr.Error())
 	}
 }
+func Get_open(Account string) []Open_order  {
+	var a Open_order
+	orders := new(Order)
+	row, err := MysqlDb.Query("select * from orders where account=? and status=?", Account,"online")
+	if err != nil {
+		log.Println(err)
+	}
+	var ss []Open_order
+	for row.Next() {
+		err = row.Scan(&orders.Id, &orders.Price, &orders.Volume, &orders.Side, &orders.Status, &orders.Time, &orders.Account, &orders.User_id)
+		if err != nil {
+			log.Println(err)
+		}
+		a.Id = orders.Id
+		a.Side = orders.Side
+		a.Time = orders.Time
+		a.Volume = orders.Volume
+		a.Price = orders.Price
+		ss = append(ss, a)
+
+	}
+
+	return ss
+}
+
 
 func Checkfile(Account string) User {
 	var a User
@@ -117,9 +159,9 @@ func Write_info(Account string, Money float64, Coin float64, lock_money float64,
 	}
 }
 
-func Create_order(Account string, price float64, volume float64, side string, status string, time int64) int64 {
-	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time) values(?,?,?,?,?,?)", Account, price,
-		volume, side, status, time)
+func Create_order(Account string, price float64, volume float64, side string, status string, time int64, user_id int64) int64 {
+	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time,user_id) values(?,?,?,?,?,?,?)", Account, price,
+		volume, side, status, time, user_id)
 	if err != nil {
 		panic(err)
 	}
@@ -132,12 +174,16 @@ func Create_order(Account string, price float64, volume float64, side string, st
 	return id
 }
 
-func deel_order(price float64, volume float64, side string, time int64, buyer string, seller string) {
-	_, err := MysqlDb.Exec("insert INTO trade(price,volume,side,time,buyer,seller) values(?,"+
-		"?,?,?,?,?)", price, volume, side, time, buyer, seller)
-	if err != nil {
-		panic(err)
+func deel_order(account string,price float64, volume float64, side string, time int64, buyer string, seller string) {
+	if side =="sell"{
+		row, err := MysqlDb.Query("select price, volume, account from orders where `status`=? and price>=? and side=?","online",
+		price,"buy")
+		if err!= nil{
+			log.Println(err)
+		}
 	}
+
+
 }
 
 //func Find_order(side string, price float64) {
@@ -153,10 +199,12 @@ func deel_order(price float64, volume float64, side string, time int64, buyer st
 //
 //}
 
-func Cancel_order(id int64) {
-	_, err := MysqlDb.Exec("UPDATE orders set status=? where id=?", "canceled", id)
+func Cancel_order(account string,id int64) error{
+	_, err := MysqlDb.Exec("UPDATE orders set status=? where id=? and account=?", "canceled", id,account)
 	if err != nil {
 		panic(err)
 	}
-
+			return err
 }
+
+\
