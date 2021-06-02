@@ -190,6 +190,25 @@ func Write_info(Account string, Money float64, Coin float64, lock_money float64,
 	}
 }
 
+func Write_order_info(Id int64, volume float64, status string) {
+	_, err := MysqlDb.Exec("UPDATE orders set `status`=? where id=?", status, Id)
+	if err != nil {
+		fmt.Println(err)
+	}
+	_, err = MysqlDb.Exec("UPDATE orders set volume=? where id=?", volume, Id)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+}
+func Write_trade_info(price float64, volume float64, side string, time int64, buyer string, seller string) {
+	_, err := MysqlDb.Exec("insert INTO trade(price,volume,side,time,buyer,seller) values(?,?,?,?,?,?)", price,
+		volume, side, time, buyer, seller)
+	if err != nil {
+		panic(err)
+	}
+}
+
 func Create_order(Account string, price float64, volume float64, side string, status string, time int64, user_id int64) int64 {
 	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time,user_id) values(?,?,?,?,?,?,?)", Account, price,
 		volume, side, status, time, user_id)
@@ -256,7 +275,7 @@ func Get_side_info() ([]Order, []Order) {
 			log.Println(err)
 		}
 		buy = append(buy, Order{Id, Price, Volume, side, status, Time, account, user_id})
-		fmt.Println(buy)
+		//fmt.Println(buy)
 	}
 	row, err := MysqlDb.Query("SELECT * FROM orders where `status`=? and side=? ORDER BY price, `time` ", "online", "sell")
 	if err != nil {
@@ -277,10 +296,10 @@ func Get_side_info() ([]Order, []Order) {
 			log.Println(err)
 		}
 		sell = append(sell, Order{Id, Price, Volume, side, status, Time, account, user_id})
-		fmt.Println(sell)
+		//fmt.Println(sell)
 
 	}
-	fmt.Println(buy, sell)
+	//fmt.Println(buy, sell)
 
 	return buy, sell
 }
