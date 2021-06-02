@@ -151,7 +151,7 @@ func create_order(c *gin.Context) {
 					if len(buy) == 0 {
 						t := time.Now().Unix()
 						mysql.Write_info(account, info.Normal_Money, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin+volume)
-						id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
+						id := mysql.Create_order(account, price, volume, side, "online", t, info.Id, volume)
 						c.JSON(200, gin.H{
 							"code":     201,
 							"message":  "success",
@@ -160,59 +160,67 @@ func create_order(c *gin.Context) {
 						return
 					}
 					buyindex := 0
+					id := mysql.Create_order(account, price, volume, side, "online", t, info.Id, volume)
+					//mysql.Write_info(account, info.Normal_Money, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin+volume)
 					for {
+						info = mysql.Checkfile(account)
 						//fmt.Println("无敌",price,buy[buyindex].Price)
 						info2 := mysql.Checkfile(buy[buyindex].Account)
 						if price <= buy[buyindex].Price {
+
 							if volume < buy[buyindex].Volume {
-								id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id)
+
 								c.JSON(200, gin.H{
 									"code":     202,
 									"message":  "success",
 									"order_id": id,
 								})
-								mysql.Write_trade_info(buy[buyindex].Price, volume, side, t, account, buy[buyindex].Account)
-								mysql.Write_info(buy[buyindex].Account, info2.Normal_Money, info2.Normal_Coin+volume, info2.Lock_money-use, info2.Lock_coin) //买家(挂单)的余额修改
-								mysql.Write_info(account, info.Normal_Money+use, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin)                   //卖家(下单)余额修改
-								mysql.Write_order_info(buy[buyindex].Id, buy[buyindex].Volume-volume, "online")
+								mysql.Write_trade_info(buy[buyindex].Price, volume, side, t, buy[buyindex].Account, account)
+								mysql.Write_info(buy[buyindex].Account, info2.Normal_Money, info2.Normal_Coin+volume, info2.Lock_money-buy[buyindex].Volume*buy[buyindex].Price, info2.Lock_coin) //买家(挂单)的余额修改
+								mysql.Write_info(account, info.Normal_Money+buy[buyindex].Volume*buy[buyindex].Price, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin)                   //卖家(下单)余额修改
+								mysql.Write_order_info(buy[buyindex].Id, "online", buy[buyindex].Volume-volume)
+								mysql.Write_order_info(id, "dealed", volume-volume)
 								break
 							}
 							if volume == buy[buyindex].Volume {
-								id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id)
+								//id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id)
 								c.JSON(200, gin.H{
 									"code":     203,
 									"message":  "success",
 									"order_id": id,
 								})
-								mysql.Write_trade_info(price, volume, side, t, account, buy[buyindex].Account)
-								mysql.Write_info(buy[buyindex].Account, info2.Normal_Money, info2.Normal_Coin+volume, info2.Lock_money-use, info2.Lock_coin) //买家的余额修改
-								mysql.Write_info(account, info.Normal_Money+use, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin)                   //卖家余额修改
-								mysql.Write_order_info(buy[buyindex].Id, buy[buyindex].Volume, "dealed")
+								mysql.Write_trade_info(buy[buyindex].Price, volume, side, t, buy[buyindex].Account, account)
+								mysql.Write_info(buy[buyindex].Account, info2.Normal_Money, info2.Normal_Coin+volume, info2.Lock_money-buy[buyindex].Volume*buy[buyindex].Price, info2.Lock_coin) //买家的余额修改
+								mysql.Write_info(account, info.Normal_Money+buy[buyindex].Volume*buy[buyindex].Price, info.Normal_Coin, info.Lock_money, info.Lock_coin-volume)                   //卖家余额修改
+								mysql.Write_order_info(buy[buyindex].Id, "dealed", buy[buyindex].Volume-volume)
+								mysql.Write_order_info(id, "dealed", volume-volume)
 								break
 
 							}
 							if volume > buy[buyindex].Volume {
-								if price <= buy[buyindex].Price {
-									volume = volume - buy[buyindex].Volume
-									mysql.Write_info(buy[buyindex].Account,
-										info2.Normal_Money+buy[buyindex].Price*buy[buyindex].Volume,
-										info2.Normal_Coin, info.Lock_money,
-										info2.Lock_coin-buy[buyindex].Volume)
-									mysql.Write_info(account,
-										info.Normal_Money+buy[buyindex].Price*buy[buyindex].Volume,
-										info.Normal_Coin, info.Lock_money,
-										info.Lock_coin-buy[buyindex].Volume)
-									t2 := time.Now().Unix()
-									mysql.Write_trade_info(buy[buyindex].Price, buy[buyindex].Volume, side, t2, account, buy[buyindex].Account)
-									mysql.Write_order_info(buy[buyindex].Id, buy[buyindex].Volume, "dealed")
-									buyindex++
-								}
+
+								mysql.Write_order_info(id, "online", volume-buy[buyindex].Volume)
+								volume = volume - buy[buyindex].Volume
+								mysql.Write_info(buy[buyindex].Account,
+									info2.Normal_Money,
+									info2.Normal_Coin+buy[buyindex].Volume, info.Lock_money-buy[buyindex].Price*buy[buyindex].Volume,
+									info2.Lock_coin)
+								mysql.Write_info(account,
+									info.Normal_Money+buy[buyindex].Price*buy[buyindex].Volume,
+									info.Normal_Coin, info.Lock_money,
+									info.Lock_coin-buy[buyindex].Volume)
+								t2 := time.Now().Unix()
+								mysql.Write_trade_info(buy[buyindex].Price, buy[buyindex].Volume, side, t2, buy[buyindex].Account, account)
+								mysql.Write_order_info(buy[buyindex].Id, "dealed", 0)
+								mysql.Write_order_info(id, "online", volume)
+
+								buyindex++
 
 							}
 
 						} else {
-							mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin, info.Lock_money+use, info.Lock_coin)
-							id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
+							//mysql.Write_info(account, info.Normal_Money, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin+volume)
+							//id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
 							c.JSON(200, gin.H{
 								"code":     204,
 								"message":  "success",
@@ -234,9 +242,9 @@ func create_order(c *gin.Context) {
 					})
 				} else {
 					if len(sell) == 0 {
-						t := time.Now().Unix()
+						t = time.Now().Unix()
 						mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin, info.Lock_money+use, info.Lock_coin)
-						id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
+						id := mysql.Create_order(account, price, volume, side, "online", t, info.Id, volume)
 						c.JSON(206, gin.H{
 							"code":     200,
 							"message":  "success",
@@ -245,59 +253,66 @@ func create_order(c *gin.Context) {
 						return
 					}
 					sellindex := 0
-					info2 := mysql.Checkfile(sell[sellindex].Account)
+					//mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin, info.Lock_money+use, info.Lock_coin)
+					id := mysql.Create_order(account, price, volume, side, "online", t, info.Id, volume)
 					for {
+						info = mysql.Checkfile(account)
+						//fmt.Println(len(sell))
+						//fmt.Println(sellindex)
+						info2 := mysql.Checkfile(sell[sellindex].Account)
 						if price >= sell[sellindex].Price {
 							if volume < sell[sellindex].Volume {
-								id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id)
+								//id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id, volume)
 								c.JSON(200, gin.H{
 									"code":     200,
 									"message":  "success",
 									"order_id": id,
 								})
 								mysql.Write_trade_info(sell[sellindex].Price, volume, side, t, account, sell[sellindex].Account)
-								mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin+volume, info.Lock_money, info.Lock_coin)                     //买家的余额修改
-								mysql.Write_info(sell[sellindex].Account, info2.Normal_Money+use, info2.Normal_Coin, info2.Lock_money, info2.Lock_coin-volume) //卖家余额修改
-								mysql.Write_order_info(sell[sellindex].Id, sell[sellindex].Volume-volume, "online")
+								mysql.Write_info(account, info.Normal_Money-sell[sellindex].Volume*sell[sellindex].Price, info.Normal_Coin+volume, info.Lock_money, info.Lock_coin)                     //买家的余额修改
+								mysql.Write_info(sell[sellindex].Account, info2.Normal_Money+sell[sellindex].Volume*sell[sellindex].Price, info2.Normal_Coin, info2.Lock_money, info2.Lock_coin-volume) //卖家余额修改
+								mysql.Write_order_info(sell[sellindex].Id, "online", sell[sellindex].Volume-volume)
+								mysql.Write_order_info(id, "dealed", volume-volume)
 								break
 							}
 							if volume == sell[sellindex].Volume {
-								id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id)
+								//id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id, volume)
 								c.JSON(200, gin.H{
 									"code":     207,
 									"message":  "success",
 									"order_id": id,
 								})
-								mysql.Write_trade_info(price, volume, side, t, account, sell[sellindex].Account)
-								mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin+volume, info.Lock_money, info.Lock_coin)                     //买家的余额修改
-								mysql.Write_info(sell[sellindex].Account, info2.Normal_Money+use, info2.Normal_Coin, info2.Lock_money, info2.Lock_coin-volume) //卖家余额修改
+								mysql.Write_trade_info(sell[sellindex].Price, volume, side, t, account, sell[sellindex].Account)
+								mysql.Write_info(account, info.Normal_Money-sell[sellindex].Volume*sell[sellindex].Price, info.Normal_Coin+volume, info.Lock_money, info.Lock_coin)     //买家的余额修改
+								mysql.Write_info(sell[sellindex].Account, info2.Normal_Money+sell[sellindex].Price*volume, info2.Normal_Coin, info2.Lock_money, info2.Lock_coin-volume) //卖家余额修改
 								//fmt.Println(sell[sellindex].Id)
-								mysql.Write_order_info(sell[sellindex].Id, sell[sellindex].Volume, "dealed")
+								mysql.Write_order_info(sell[sellindex].Id, "dealed", sell[sellindex].Volume-volume)
+								mysql.Write_order_info(id, "dealed", volume-volume)
 								break
 
 							}
 							if volume > sell[sellindex].Volume {
-								if price >= sell[sellindex].Price {
-									volume -= sell[sellindex].Volume
-									mysql.Write_info(sell[sellindex].Account,
-										info.Normal_Money+sell[sellindex].Price*sell[sellindex].Volume,
-										info.Normal_Coin, info.Lock_money,
-										info.Lock_coin-sell[sellindex].Volume)
-									mysql.Write_info(account,
-										info.Normal_Money+sell[sellindex].Price*sell[sellindex].Volume,
-										info.Normal_Coin, info.Lock_money,
-										info.Lock_coin-sell[sellindex].Volume)
-									t2 := time.Now().Unix()
-									mysql.Write_trade_info(sell[sellindex].Price, sell[sellindex].Volume, side, t2, account, sell[sellindex].Account)
-									mysql.Write_order_info(sell[sellindex].Id, sell[sellindex].Volume, "dealed")
-									sellindex++
-								}
+
+								volume -= sell[sellindex].Volume
+								mysql.Write_info(sell[sellindex].Account,
+									info2.Normal_Money+sell[sellindex].Price*sell[sellindex].Volume,
+									info2.Normal_Coin, info.Lock_money,
+									info2.Lock_coin-sell[sellindex].Volume)
+								mysql.Write_info(account,
+									info2.Normal_Money+sell[sellindex].Price*sell[sellindex].Volume,
+									info2.Normal_Coin, info.Lock_money,
+									info2.Lock_coin-sell[sellindex].Volume)
+								t2 := time.Now().Unix()
+								mysql.Write_trade_info(sell[sellindex].Price, sell[sellindex].Volume, side, t2, account, sell[sellindex].Account)
+								mysql.Write_order_info(sell[sellindex].Id, "dealed", 0)
+								mysql.Write_order_info(id, "online", volume)
+								sellindex++
 
 							}
 
 						} else {
 							mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin, info.Lock_money+use, info.Lock_coin)
-							id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
+							//id := mysql.Create_order(account, price, volume, side, "online", t, info.Id, volume)
 							c.JSON(200, gin.H{
 								"code":     208,
 								"message":  "success",

@@ -43,6 +43,7 @@ type Order struct {
 	Time    int64   `db:"time"`
 	Account string  `db:"account"`
 	User_id int64   `db:"user_id"`
+	Left    float64 `db:"left"`
 }
 type Open_order struct {
 	Id     int64
@@ -92,14 +93,14 @@ func Get_open(Account string) []Open_order {
 	}
 	var ss []Open_order
 	for row.Next() {
-		err = row.Scan(&orders.Id, &orders.Price, &orders.Volume, &orders.Side, &orders.Status, &orders.Time, &orders.Account, &orders.User_id)
+		err = row.Scan(&orders.Id, &orders.Price, &orders.Volume, &orders.Side, &orders.Status, &orders.Time, &orders.Account, &orders.User_id, &orders.Left)
 		if err != nil {
 			log.Println(err)
 		}
 		a.Id = orders.Id
 		a.Side = orders.Side
 		a.Time = orders.Time
-		a.Volume = orders.Volume
+		a.Volume = orders.Left
 		a.Price = orders.Price
 		ss = append(ss, a)
 
@@ -190,12 +191,12 @@ func Write_info(Account string, Money float64, Coin float64, lock_money float64,
 	}
 }
 
-func Write_order_info(Id int64, volume float64, status string) {
+func Write_order_info(Id int64, status string, left float64) {
 	_, err := MysqlDb.Exec("UPDATE orders set `status`=? where id=?", status, Id)
 	if err != nil {
 		fmt.Println(err)
 	}
-	_, err = MysqlDb.Exec("UPDATE orders set volume=? where id=?", volume, Id)
+	_, err = MysqlDb.Exec("UPDATE orders set `left`=? where id=?", left, Id)
 	if err != nil {
 		fmt.Println(err)
 	}
@@ -209,9 +210,9 @@ func Write_trade_info(price float64, volume float64, side string, time int64, bu
 	}
 }
 
-func Create_order(Account string, price float64, volume float64, side string, status string, time int64, user_id int64) int64 {
-	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time,user_id) values(?,?,?,?,?,?,?)", Account, price,
-		volume, side, status, time, user_id)
+func Create_order(Account string, price float64, volume float64, side string, status string, time int64, user_id int64, left float64) int64 {
+	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time,user_id,`left`) values(?,?,?,?,?,?,?,?)", Account, price,
+		volume, side, status, time, user_id, left)
 	if err != nil {
 		panic(err)
 	}
@@ -269,12 +270,13 @@ func Get_side_info() ([]Order, []Order) {
 		var Time int64
 		var account string
 		var user_id int64
+		var left float64
 
-		err := rows.Scan(&Id, &Price, &Volume, &side, &status, &Time, &account, &user_id)
+		err := rows.Scan(&Id, &Price, &Volume, &side, &status, &Time, &account, &user_id, &left)
 		if err != nil {
 			log.Println(err)
 		}
-		buy = append(buy, Order{Id, Price, Volume, side, status, Time, account, user_id})
+		buy = append(buy, Order{Id, Price, Volume, side, status, Time, account, user_id, left})
 		//fmt.Println(buy)
 	}
 	row, err := MysqlDb.Query("SELECT * FROM orders where `status`=? and side=? ORDER BY price, `time` ", "online", "sell")
@@ -290,12 +292,13 @@ func Get_side_info() ([]Order, []Order) {
 		var Time int64
 		var account string
 		var user_id int64
+		var left float64
 
-		err := row.Scan(&Id, &Price, &Volume, &side, &status, &Time, &account, &user_id)
+		err := row.Scan(&Id, &Price, &Volume, &side, &status, &Time, &account, &user_id, &left)
 		if err != nil {
 			log.Println(err)
 		}
-		sell = append(sell, Order{Id, Price, Volume, side, status, Time, account, user_id})
+		sell = append(sell, Order{Id, Price, Volume, side, status, Time, account, user_id, left})
 		//fmt.Println(sell)
 
 	}
