@@ -1,7 +1,10 @@
 package router
 
 import (
+	"awesomeProject/src/mysql"
 	"awesomeProject/src/rlog"
+	"crypto/md5"
+	"fmt"
 	"github.com/dgrijalva/jwt-go"
 	"github.com/gin-gonic/gin"
 	"net/http"
@@ -18,17 +21,30 @@ func authRouter(apiR *gin.RouterGroup) {
 			c.JSON(400, gin.H{"message": "Post Data Err"})
 			return
 		}
-		//if reqData.Username != "" || reqData.Password != "" {
-		//	c.JSON(200, gin.H{"message": "Pwd Wrong Err"})
-		//	return
-		//}
-		OTAOK, err := NewGoogleAuth().VerifyCode("X5PNFM56OQTU4NPXV2R3LIKYJTXST4JR", reqData.OTA)
+		var pwdMd5 string
+		{
+			data := []byte(reqData.Password)
+			has := md5.Sum(data)
+			pwdMd5 = fmt.Sprintf("%x", has)
+		}
+
+		name, pwd, gsk, id, err := mysql.Get_account_info(reqData.Username)
+		if err != nil {
+			rlog.Error(err)
+			c.JSON(200, gin.H{"message": "username wrong"})
+			return
+		}
+		if reqData.Username != name || pwdMd5 != pwd {
+			c.JSON(200, gin.H{"message": "Pwd Wrong Err"})
+			return
+		}
+		OTAOK, err := NewGoogleAuth().VerifyCode(gsk, reqData.OTA)
 		if err != nil || !OTAOK {
 			rlog.Error(err)
 			c.JSON(200, gin.H{"message": "AUTH Data Err"})
 			return
 		}
-		token := generateToken(c, reqData.Username)
+		token := generateToken(c, id, reqData.Username)
 
 		data := LoginResult{
 			User:  reqData.Username,
@@ -41,15 +57,38 @@ func authRouter(apiR *gin.RouterGroup) {
 			"data": data,
 		})
 	})
+
+	apiR.POST("/register", func(c *gin.Context) {
+
+		Account := c.Query("account")
+		Password := c.Query("password")
+		mysql.Connect()
+		a := mysql.Check_same_account(Account)
+		if !a {
+			googleSk := NewGoogleAuth().GetSecret()
+			mysql.Write_account(Account, Password, googleSk)
+			c.JSON(200, gin.H{
+				"code":    200,
+				"message": "success",
+				"data":    googleSk,
+			})
+		} else {
+			c.JSON(200, gin.H{
+				"code":    1003,
+				"message": "already have this account",
+			})
+
+		}
+	})
+
 }
 
 // 生成令牌
-func generateToken(c *gin.Context, user string) (token string) {
+func generateToken(c *gin.Context, userId int, userName string) (token string) {
 	j := NewJWT()
 	claims := CustomClaims{
-		user,
-		user,
-		user,
+		userId,
+		userName,
 		jwt.StandardClaims{
 			NotBefore: int64(time.Now().Unix() - 1000), // 签名生效时间
 			ExpiresAt: int64(time.Now().Unix() + 3600), // 过期时间 一小时

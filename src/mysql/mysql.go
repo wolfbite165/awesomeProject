@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"crypto/md5"
 	"database/sql"
 	"fmt"
 	_ "github.com/go-sql-driver/mysql"
@@ -28,6 +29,7 @@ type User struct {
 	Normal_Coin  float64 `db:"normal_Coin"`
 	Lock_money   float64 `db:"lock_money"`
 	Lock_coin    float64 `db:"lock_coin"`
+	googleSK     string  `db:"GoogleSK"`
 }
 type Find struct {
 	price   float64 `db:"price"`
@@ -62,6 +64,12 @@ type Orders struct {
 	Price   float64
 	Volume  float64
 	Account string
+}
+type trades struct {
+	price  float64
+	volume float64
+	side   string
+	time   int64
 }
 
 func Connect() {
@@ -134,11 +142,11 @@ func Checkfile(Account string) User {
 	var a User
 	user := new(User)
 	row := MysqlDb.QueryRow("select * from Account where Account=?", Account)
-	if err := row.Scan(&user.Id, &user.Account, &user.Password, &user.Normal_Money, &user.Normal_Coin, &user.Lock_money, &user.Lock_coin); err != nil {
+	if err := row.Scan(&user.Id, &user.Account, &user.Password, &user.Normal_Money, &user.Normal_Coin, &user.Lock_money, &user.Lock_coin, &user.googleSK); err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 		//return
 	}
-	fmt.Println(user.Id, user.Account, user.Password, user.Normal_Money, user.Normal_Coin, user.Lock_money, user.Lock_coin)
+	//fmt.Println(user.Id, user.Account, user.Password, user.Normal_Money, user.Normal_Coin, user.Lock_money, user.Lock_coin)
 	a.Id = user.Id
 	a.Account = user.Account
 	a.Password = user.Password
@@ -146,15 +154,21 @@ func Checkfile(Account string) User {
 	a.Normal_Coin = user.Normal_Coin
 	a.Lock_money = user.Lock_money
 	a.Lock_coin = user.Lock_coin
-	fmt.Println(a)
+	a.googleSK = user.googleSK
+	//fmt.Println(a)
 
 	return a
 
 }
-func Write_account(Account string, Password string) bool {
+func Write_account(Account string, Password string, googleSk string) bool {
 	a := Check_same_account(Account)
 	if a == false {
-		_, err := MysqlDb.Exec("insert INTO Account(Account,Password) values(?,?)", Account, Password)
+		{
+			data := []byte(Password)
+			has := md5.Sum(data)
+			Password = fmt.Sprintf("%x", has)
+		}
+		_, err := MysqlDb.Exec("insert INTO Account(Account,Password,GoogleSK) values(?,?,?)", Account, Password, googleSk)
 		if err != nil {
 			fmt.Println(err)
 
@@ -225,24 +239,25 @@ func Create_order(Account string, price float64, volume float64, side string, st
 	return id
 }
 
-func Deel_order(price float64, side string) {
-	if side == "sell" {
-		row, err := MysqlDb.Query("select price, volume, account from orders where `status`=? and price>=? and side=?", "online",
-			price, "buy")
-		if err != nil {
-			log.Println(err)
-		}
-		for row.Next() {
-			var price1 float64
-			var volume float64
-			var account string
-			err := row.Scan(&price1, &volume, &account)
-			if err != nil {
-				log.Println(err)
-			}
-			fmt.Println(price1, volume, account)
-		}
+func Get_account_info(account string) (name string, pwd string, gsk string, id int, err error) {
+	var rows *sql.Rows
+	rows, err = MysqlDb.Query("select Account,Password,GoogleSK,id from account where Account=?",
+		account)
+	if err != nil {
+		log.Println(err)
+		return
 	}
+	//var name string
+	//var pwd string
+	//var gsk string
+	//var id int
+
+	err = rows.Scan(&name, &pwd, &gsk, &id)
+	if err != nil {
+		log.Println(err)
+		return
+	}
+	return
 
 }
 
@@ -305,6 +320,45 @@ func Get_side_info() ([]Order, []Order) {
 	//fmt.Println(buy, sell)
 
 	return buy, sell
+}
+
+func Get_trade_list(num int64) []trades {
+	var out []trades
+	rows, err := MysqlDb.Query("select * from trade order by id desc limit 0,?", num)
+	if err != nil {
+		log.Println(err)
+	}
+	for rows.Next() {
+		var Id int64
+		var price float64
+		var volume float64
+		var side string
+		var time int64
+		var buyer string
+		var seller string
+		err := rows.Scan(&Id, &price, &volume, &side, &time, &buyer, &seller)
+		if err != nil {
+			log.Println(err)
+		}
+		out = append(out, trades{price: price, volume: volume, side: side, time: time})
+	}
+	return out
+}
+
+func Get_ticker() (price float64, volume float64, err error) {
+	rows, err := MysqlDb.Query("select price, volume from trade order by id desc limit 1")
+	if err != nil {
+		log.Println(err)
+		return
+	}
+
+	err = rows.Scan(&price, &volume)
+	if err != nil {
+		log.Println(err)
+
+	}
+	return price, volume
+
 }
 
 //
