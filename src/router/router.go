@@ -2,6 +2,7 @@ package router
 
 import (
 	"awesomeProject/src/mysql"
+	"awesomeProject/src/rlog"
 	"fmt"
 	"github.com/gin-gonic/gin"
 	"strconv"
@@ -16,9 +17,9 @@ type wallet struct {
 }
 
 type Out struct {
-	price  float64
-	volume float64
-	side   string
+	Price  float64 `json:"price"`
+	Volume float64 `json:"volume"`
+	Side   string  `json:"side"`
 }
 type Trade_out struct {
 	sell Out
@@ -53,8 +54,15 @@ func InitRouter() {
 }
 
 func get_account(c *gin.Context) {
-	Account := c.Query("account")
 
+	token := c.Request.Header.Get("token")
+	j := NewJWT()
+	claims, err := j.ParseToken(token)
+	if err != nil {
+		return
+	}
+	Account := claims.Name
+	fmt.Println(Account)
 	mysql.Connect()
 	a := mysql.Check_same_account(Account)
 	if a == true {
@@ -115,18 +123,29 @@ func create_order(c *gin.Context) {
 	mysql.Connect()
 	var orderdata create
 	err := c.BindJSON(&orderdata)
-	side := c.Query("side")
-	price, _ := strconv.ParseFloat(c.Query("price"), 64)
-	volume, _ := strconv.ParseFloat(c.Query("volume"), 64)
-	account := c.Query("account")
+	if err != nil {
+		rlog.Error(err)
+		c.JSON(400, gin.H{"message": "Post Data Err"})
+		return
+	}
+	token := c.Request.Header.Get("token")
+	j := NewJWT()
+	claims, err := j.ParseToken(token)
+	if err != nil {
+		return
+	}
+	side := orderdata.Side
+	price := orderdata.Price
+	volume := orderdata.Volume
+	account := claims.Name
 	info := mysql.Checkfile(account)
 	buy, sell := mysql.Get_side_info()
 	use := price * volume
-	fmt.Println("price=?", price)
-	fmt.Println("volume=?", volume)
-	fmt.Println("use=?", use)
-	fmt.Println("normal=?", info.Normal_Money)
-	fmt.Println(info.Lock_money)
+	//fmt.Println("price=?", price)
+	//fmt.Println("volume=?", volume)
+	//fmt.Println("use=?", use)
+	//fmt.Println("normal=?", info.Normal_Money)
+	//fmt.Println(info.Lock_money)
 	if price == 0 || volume == 0 {
 		c.JSON(200, gin.H{
 			"code":    1006,
@@ -348,7 +367,13 @@ func create_order(c *gin.Context) {
 
 func Get_oppen_order(c *gin.Context) {
 	mysql.Connect()
-	account := c.Query("account")
+	token := c.Request.Header.Get("token")
+	j := NewJWT()
+	claims, err := j.ParseToken(token)
+	if err != nil {
+		return
+	}
+	account := claims.Name
 	a := mysql.Check_same_account(account)
 	if a != true {
 		c.JSON(200, gin.H{
@@ -368,16 +393,24 @@ func Get_oppen_order(c *gin.Context) {
 
 func Cancel_order(c *gin.Context) {
 	mysql.Connect()
+	var Iddata cancel
+	err := c.BindJSON(&Iddata)
+	if err != nil {
+		rlog.Error(err)
+		c.JSON(400, gin.H{"message": "Post Data Err"})
+		return
+	}
 	token := c.Request.Header.Get("token")
 	j := NewJWT()
 	claims, err := j.ParseToken(token)
 	account := claims.Name
-	account := c.Query("account")
-	id, err := strconv.ParseInt(c.Query("id"), 0, 64)
+	//account := c.Query("account")
+	id := Iddata.Id
 	s := mysql.Check_order_info(account, id)
 	d := mysql.Checkfile(account)
 	a := mysql.Check_same_account(account)
-	use := s.Price * s.Volume
+	fmt.Println(s.Status)
+	use := s.Price * s.Left
 	if a != true {
 		c.JSON(200, gin.H{
 			"code":    1001,
@@ -427,11 +460,20 @@ func Get_depth(c *gin.Context) {
 	var out [][]Out
 	mysql.Connect()
 	buy, sell := mysql.Get_side_info()
-	for i := 0; i == len(buy); i++ {
+	println(len(buy))
+
+	for i := 0; i < len(buy); i++ {
 		buy1 = append(buy1, Out{buy[i].Price, buy[i].Volume, buy[i].Side})
+		//fmt.Printf("%+v", buy1)
+
+	}
+	for i := 0; i < len(sell); i++ {
 		sell1 = append(sell1, Out{sell[i].Price, sell[i].Volume, sell[i].Side})
 	}
+	fmt.Println(buy1, sell1)
 	out = append(out, buy1, sell1)
+	fmt.Printf("%+v", out)
+	//ss:=
 	c.JSON(200, gin.H{
 		"code": 200,
 		"data": out,
@@ -460,12 +502,12 @@ func Get_trade_history(c *gin.Context) {
 
 func Get_ticker(c *gin.Context) {
 	mysql.Connect()
-	var tick []float64
-	price, volume := mysql.Get_ticker()
-	tick = append(tick, price, volume)
+	cc, _ := mysql.Get_ticker()
+	//println(price,volume)
+
 	c.JSON(200, gin.H{
 		"code": 200,
-		"data": tick,
+		"data": cc,
 	})
 
 }
@@ -474,6 +516,9 @@ type create struct {
 	Price  float64 `json:"price"`
 	Volume float64 `json:"volume"`
 	Side   string  `json:"side"`
+}
+type cancel struct {
+	Id int64 `json:"id"`
 }
 
 //func Deal_orders(sleep

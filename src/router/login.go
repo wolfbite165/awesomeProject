@@ -12,6 +12,7 @@ import (
 )
 
 func authRouter(apiR *gin.RouterGroup) {
+	mysql.Connect()
 
 	apiR.POST("/login", func(c *gin.Context) {
 		var reqData LoginReq
@@ -28,23 +29,23 @@ func authRouter(apiR *gin.RouterGroup) {
 			pwdMd5 = fmt.Sprintf("%x", has)
 		}
 
-		name, pwd, gsk, id, err := mysql.Get_account_info(reqData.Username)
+		info, err := mysql.Get_account_info(reqData.Username)
 		if err != nil {
 			rlog.Error(err)
 			c.JSON(200, gin.H{"message": "username wrong"})
 			return
 		}
-		if reqData.Username != name || pwdMd5 != pwd {
+		if reqData.Username != info.Account || pwdMd5 != info.Pwd {
 			c.JSON(200, gin.H{"message": "Pwd Wrong Err"})
 			return
 		}
-		OTAOK, err := NewGoogleAuth().VerifyCode(gsk, reqData.OTA)
+		OTAOK, err := NewGoogleAuth().VerifyCode(info.Google, reqData.OTA)
 		if err != nil || !OTAOK {
 			rlog.Error(err)
 			c.JSON(200, gin.H{"message": "AUTH Data Err"})
 			return
 		}
-		token := generateToken(c, id, reqData.Username)
+		token := generateToken(c, info.Id, reqData.Username)
 
 		data := LoginResult{
 			User:  reqData.Username,
@@ -59,9 +60,16 @@ func authRouter(apiR *gin.RouterGroup) {
 	})
 
 	apiR.POST("/register", func(c *gin.Context) {
+		var register Regiter
+		err := c.BindJSON(&register)
+		if err != nil {
+			rlog.Error(err)
+			c.JSON(400, gin.H{"message": "Post Data Err"})
+			return
+		}
 
-		Account := c.Query("account")
-		Password := c.Query("password")
+		Account := register.Name
+		Password := register.Password
 		mysql.Connect()
 		a := mysql.Check_same_account(Account)
 		if !a {
@@ -118,3 +126,10 @@ type LoginResult struct {
 	User  string `json:"user"`
 	Token string `json:"token"`
 }
+
+type Regiter struct {
+	Name     string `json:"username"`
+	Password string `json:"password"`
+}
+
+//

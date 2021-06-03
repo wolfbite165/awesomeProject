@@ -66,10 +66,10 @@ type Orders struct {
 	Account string
 }
 type trades struct {
-	price  float64
-	volume float64
-	side   string
-	time   int64
+	Price  float64
+	Volume float64
+	Side   string
+	Time   int64
 }
 
 func Connect() {
@@ -121,7 +121,7 @@ func Check_order_info(account string, id int64) Order {
 	var a Order
 	orders := new(Order)
 	row := MysqlDb.QueryRow("select * from orders where Account=? and id=?", account, id)
-	if err := row.Scan(&orders.Id, &orders.Price, &orders.Volume, &orders.Side, &orders.Status, &orders.Time, &orders.Account, &orders.User_id); err != nil {
+	if err := row.Scan(&orders.Id, &orders.Price, &orders.Volume, &orders.Side, &orders.Status, &orders.Time, &orders.Account, &orders.User_id, &orders.Left); err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 		//return
 	}
@@ -134,6 +134,7 @@ func Check_order_info(account string, id int64) Order {
 	a.Status = orders.Status
 	a.User_id = orders.User_id
 	a.Volume = orders.Volume
+	a.Left = orders.Left
 	fmt.Println(a)
 
 	return a
@@ -239,24 +240,23 @@ func Create_order(Account string, price float64, volume float64, side string, st
 	return id
 }
 
-func Get_account_info(account string) (name string, pwd string, gsk string, id int, err error) {
-	var rows *sql.Rows
-	rows, err = MysqlDb.Query("select Account,Password,GoogleSK,id from account where Account=?",
+func Get_account_info(account string) (out acc_info, err error) {
+	var rows *sql.Row
+	rows = MysqlDb.QueryRow("select Account,Password,GoogleSK,id from account where Account=?",
 		account)
-	if err != nil {
-		log.Println(err)
-		return
+	if err := rows.Scan(&out.Account, &out.Pwd, &out.Google, &out.Id); err != nil {
+		fmt.Printf("scan failed, err:%v", err)
+		//return
 	}
+	//if err != nil {
+	//	log.Println(err)
+	//	return
+	//}
 	//var name string
 	//var pwd string
 	//var gsk string
 	//var id int
 
-	err = rows.Scan(&name, &pwd, &gsk, &id)
-	if err != nil {
-		log.Println(err)
-		return
-	}
 	return
 
 }
@@ -340,25 +340,33 @@ func Get_trade_list(num int64) []trades {
 		if err != nil {
 			log.Println(err)
 		}
-		out = append(out, trades{price: price, volume: volume, side: side, time: time})
+		out = append(out, trades{Price: price, Volume: volume, Side: side, Time: time})
 	}
 	return out
 }
 
-func Get_ticker() (price float64, volume float64, err error) {
-	rows, err := MysqlDb.Query("select price, volume from trade order by id desc limit 1")
-	if err != nil {
-		log.Println(err)
-		return
+func Get_ticker() (out ticker, err error) {
+	//tick :=new(ticker)
+	row := MysqlDb.QueryRow("select price, volume, side from trade order by id desc limit 1")
+	if err := row.Scan(&out.Price, &out.Volume, &out.Side); err != nil {
+		fmt.Printf("scan failed, err:%v", err)
 	}
 
-	err = rows.Scan(&price, &volume)
-	if err != nil {
-		log.Println(err)
+	return
 
-	}
-	return price, volume
+}
 
+type ticker struct {
+	Price  float64 `db:"price"`
+	Volume float64 `db:"volume"`
+	Side   string  `db:"side"`
+}
+
+type acc_info struct {
+	Account string `db:"Account"`
+	Pwd     string `db:"Password"`
+	Google  string `db:"GoogleSK"`
+	Id      int    `db:"id"`
 }
 
 //
