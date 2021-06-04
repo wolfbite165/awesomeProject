@@ -1,7 +1,6 @@
 package mysql
 
 import (
-	"awesomeProject/src/rlog"
 	"crypto/md5"
 	"database/sql"
 	"fmt"
@@ -222,12 +221,14 @@ func Write_trade_info(price float64, volume float64, side string, time int64, bu
 		panic(err)
 		return err
 	}
-	results, err := MysqlDb.Exec("insert INTO secend(price,volume) value (?,?)", price, volume)
-	_, err = results.LastInsertId()
-	if err != nil {
-		//panic(err)
-		return err
-	}
+	return err
+	//results, err := MysqlDb.Exec("insert INTO secend(price,volume) value (?,?)", price, volume)
+	//_, err = results.LastInsertId()
+	//if err != nil {
+	//	//panic(err)
+	//	return err
+	//}
+
 }
 func Create_order(Account string, price float64, volume float64, side string, status string, time int64, user_id int64, left float64) int64 {
 	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time,user_id,`left`) values(?,?,?,?,?,?,?,?)", Account, price,
@@ -344,8 +345,14 @@ func Get_trade_list(num int64) []trades {
 	}
 	return out
 }
-func Write_kline() error {
+func Write_kline() {
 	start := time.Now().Unix()
+	last_min_start := start - (start % 60)
+	last_hours_start := start - (start % 3600)
+	last_threty_min_start := start - (start % 1800)
+	last_five_min_start := start - (start % 300)
+	last_twilve_hour := start - (start % (3600 * 12))
+	last_one_day_start := start - (start % (3600 * 24))
 	id_min := make(chan int64)
 	id_hour := make(chan int64)
 	id_five_min := make(chan int64)
@@ -359,21 +366,29 @@ func Write_kline() error {
 	go Twilve_hour_check(start, id_twilve_hour)
 	go One_day_check(start, id_day)
 	idmin, idhour, idfive, idthirty, idtwelve, idday := <-id_min,
-	<-id_hour,
-	<-id_five_min,
-	<-id_threty_min,
-	<-id_twilve_hour,
-	<-id_day
+		<-id_hour,
+		<-id_five_min,
+		<-id_threty_min,
+		<-id_twilve_hour,
+		<-id_day
+	last_time := time.Now().Unix()
 
 	for {
+		now_time := time.Now().Unix()
+		next_sec := last_time + 1
+		next_min_start := last_min_start + 60
+		next_hours_start := last_hours_start + 3600
+		next_threty_min_start := last_threty_min_start + 1800
+		next_five_min_start := last_five_min_start + 300
+		next_twilve_hour := last_twilve_hour + (3600 * 12)
+		next_one_day_start := last_one_day_start + (3600 * 24)
+		if now_time >= next_sec {
+			MysqlDb.Exec("insert INTO `1day`(time) values(?)", time1-one_day_start)
 
+		}
 	}
 }
-}
-func Write_min() {
-	start := time.Now().Unix()
 
-}
 func Get_ticker() (out ticker, err error) {
 	//tick :=new(ticker)
 	row := MysqlDb.QueryRow("select price, volume, side from trade order by id desc limit 1")

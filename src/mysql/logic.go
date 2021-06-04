@@ -74,13 +74,13 @@ func Five_min_check(time1 int64, id_five_min chan int64) {
 func Threty_min_check(time1 int64, id_threty_min chan int64) {
 
 	var out Kline_info
-	row := MysqlDb.QueryRow("select id,time from `30min` order by id desc limit 1")
+	row := MysqlDb.QueryRow("select id,time from ? order by id desc limit 1", "30min")
 	if err := row.Scan(&out.Id, &out.Time); err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 	}
 	threty_min_start := time1 % 1800
 	if out.Time != threty_min_start {
-		results, _ := MysqlDb.Exec("insert INTO `30min`(time) values(?)", time1-threty_min_start)
+		results, _ := MysqlDb.Exec("insert INTO ?time) values(?)", "30min", time1-threty_min_start)
 		id, _ := results.LastInsertId()
 		id_threty_min <- id
 	} else {
@@ -110,17 +110,34 @@ func Twilve_hour_check(time1 int64, id_twilve_hour chan int64) {
 func One_day_check(time1 int64, id_day chan int64) {
 
 	var out Kline_info
-	row := MysqlDb.QueryRow("select id,time from `1day` order by id desc limit 1")
+	row := MysqlDb.QueryRow("select id,time from ? order by id desc limit 1", "1day")
 	if err := row.Scan(&out.Id, &out.Time); err != nil {
 		fmt.Printf("scan failed, err:%v", err)
 	}
 	one_day_start := time1 % (3600 * 24)
 	if out.Time != one_day_start {
-		results, _ := MysqlDb.Exec("insert INTO `1day`(time) values(?)", time1-one_day_start)
+		results, _ := MysqlDb.Exec("insert INTO ?(time) values(?)", "1day", time1-one_day_start)
 		id, _ := results.LastInsertId()
 		id_day <- id
 	} else {
 
 		id_day <- out.Id
+	}
+}
+func Sec_check(time1 int64, id_sec chan int64) {
+
+	var out Kline_info
+	row := MysqlDb.QueryRow("select id,time from secend order by id desc limit 1")
+	if err := row.Scan(&out.Id, &out.Time); err != nil {
+		fmt.Printf("scan failed, err:%v", err)
+	}
+	one_day_start := time1 % (3600 * 24)
+	if out.Time != one_day_start {
+		results, _ := MysqlDb.Exec("insert INTO secend(time) values(?)", time1-one_day_start)
+		id, _ := results.LastInsertId()
+		id_sec <- id
+	} else {
+
+		id_sec <- out.Id
 	}
 }
