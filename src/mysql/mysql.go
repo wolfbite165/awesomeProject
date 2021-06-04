@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"awesomeProject/src/rlog"
 	"crypto/md5"
 	"database/sql"
 	"fmt"
@@ -82,7 +83,7 @@ func Connect() {
 	}
 
 	// 最大连接数
-	MysqlDb.SetMaxOpenConns(100)
+	MysqlDb.SetMaxOpenConns(1000)
 	// 闲置连接数
 	MysqlDb.SetMaxIdleConns(20)
 	// 最大连接周期
@@ -116,7 +117,6 @@ func Get_open(Account string) []Open_order {
 
 	return ss
 }
-
 func Check_order_info(account string, id int64) Order {
 	var a Order
 	orders := new(Order)
@@ -183,7 +183,6 @@ func Write_account(Account string, Password string, googleSk string) bool {
 	}
 
 }
-
 func Write_info(Account string, Money float64, Coin float64, lock_money float64, lock_coin float64) {
 	_, err := MysqlDb.Exec("UPDATE Account set normal_Money=? where Account=?", Money, Account)
 	if err != nil {
@@ -205,7 +204,6 @@ func Write_info(Account string, Money float64, Coin float64, lock_money float64,
 		fmt.Println(err)
 	}
 }
-
 func Write_order_info(Id int64, status string, left float64) {
 	_, err := MysqlDb.Exec("UPDATE orders set `status`=? where id=?", status, Id)
 	if err != nil {
@@ -217,14 +215,20 @@ func Write_order_info(Id int64, status string, left float64) {
 	}
 
 }
-func Write_trade_info(price float64, volume float64, side string, time int64, buyer string, seller string) {
+func Write_trade_info(price float64, volume float64, side string, time int64, buyer string, seller string) error {
 	_, err := MysqlDb.Exec("insert INTO trade(price,volume,side,time,buyer,seller) values(?,?,?,?,?,?)", price,
 		volume, side, time, buyer, seller)
 	if err != nil {
 		panic(err)
+		return err
+	}
+	results, err := MysqlDb.Exec("insert INTO secend(price,volume) value (?,?)", price, volume)
+	_, err = results.LastInsertId()
+	if err != nil {
+		//panic(err)
+		return err
 	}
 }
-
 func Create_order(Account string, price float64, volume float64, side string, status string, time int64, user_id int64, left float64) int64 {
 	results, err := MysqlDb.Exec("insert INTO orders(account,price,volume,side,status,time,user_id,`left`) values(?,?,?,?,?,?,?,?)", Account, price,
 		volume, side, status, time, user_id, left)
@@ -239,7 +243,6 @@ func Create_order(Account string, price float64, volume float64, side string, st
 
 	return id
 }
-
 func Get_account_info(account string) (out acc_info, err error) {
 	var rows *sql.Row
 	rows = MysqlDb.QueryRow("select Account,Password,GoogleSK,id from account where Account=?",
@@ -260,7 +263,6 @@ func Get_account_info(account string) (out acc_info, err error) {
 	return
 
 }
-
 func Cancel_order(account string, id int64) error {
 	_, err := MysqlDb.Exec("UPDATE orders set status=? where id=? and account=?", "canceled", id, account)
 	if err != nil {
@@ -268,7 +270,6 @@ func Cancel_order(account string, id int64) error {
 	}
 	return err
 }
-
 func Get_side_info() ([]Order, []Order) {
 	var buy []Order
 	var sell []Order
@@ -321,7 +322,6 @@ func Get_side_info() ([]Order, []Order) {
 
 	return buy, sell
 }
-
 func Get_trade_list(num int64) []trades {
 	var out []trades
 	rows, err := MysqlDb.Query("select * from trade order by id desc limit 0,?", num)
@@ -344,7 +344,36 @@ func Get_trade_list(num int64) []trades {
 	}
 	return out
 }
+func Write_kline() error {
+	start := time.Now().Unix()
+	id_min := make(chan int64)
+	id_hour := make(chan int64)
+	id_five_min := make(chan int64)
+	id_threty_min := make(chan int64)
+	id_twilve_hour := make(chan int64)
+	id_day := make(chan int64)
+	go Min_check(start, id_min)
+	go Hours_check(start, id_hour)
+	go Five_min_check(start, id_five_min)
+	go Threty_min_check(start, id_threty_min)
+	go Twilve_hour_check(start, id_twilve_hour)
+	go One_day_check(start, id_day)
+	idmin, idhour, idfive, idthirty, idtwelve, idday := <-id_min,
+	<-id_hour,
+	<-id_five_min,
+	<-id_threty_min,
+	<-id_twilve_hour,
+	<-id_day
 
+	for {
+
+	}
+}
+}
+func Write_min() {
+	start := time.Now().Unix()
+
+}
 func Get_ticker() (out ticker, err error) {
 	//tick :=new(ticker)
 	row := MysqlDb.QueryRow("select price, volume, side from trade order by id desc limit 1")
@@ -361,12 +390,16 @@ type ticker struct {
 	Volume float64 `db:"volume"`
 	Side   string  `db:"side"`
 }
-
 type acc_info struct {
 	Account string `db:"Account"`
 	Pwd     string `db:"Password"`
 	Google  string `db:"GoogleSK"`
 	Id      int    `db:"id"`
+}
+type secend struct {
+	Id     int     `db:"id"`
+	Price  float64 `db:"price"`
+	Volume float64 `db:"volume"`
 }
 
 //

@@ -512,6 +512,14 @@ func Get_ticker(c *gin.Context) {
 
 }
 
+func Get_kline(c *gin.Context) {
+
+}
+
+func Write_kilne() {
+
+}
+
 type create struct {
 	Price  float64 `json:"price"`
 	Volume float64 `json:"volume"`
