@@ -346,6 +346,7 @@ func Get_trade_list(num int64) []trades {
 	return out
 }
 func Write_kline() {
+	var id int
 	start := time.Now().Unix()
 	last_min_start := start - (start % 60)
 	last_hours_start := start - (start % 3600)
@@ -366,12 +367,20 @@ func Write_kline() {
 	go Twilve_hour_check(start, id_twilve_hour)
 	go One_day_check(start, id_day)
 	idmin, idhour, idfive, idthirty, idtwelve, idday := <-id_min,
+
 		<-id_hour,
 		<-id_five_min,
 		<-id_threty_min,
 		<-id_twilve_hour,
 		<-id_day
 	last_time := time.Now().Unix()
+	row := MysqlDb.QueryRow("select id from trade order by id desc limit 1")
+	if err := row.Scan(&id); err != nil {
+		fmt.Printf("scan failed, err:%v", err)
+		//return
+	}
+
+	last_trade_ID := id
 
 	for {
 		now_time := time.Now().Unix()
@@ -383,12 +392,52 @@ func Write_kline() {
 		next_twilve_hour := last_twilve_hour + (3600 * 12)
 		next_one_day_start := last_one_day_start + (3600 * 24)
 		if now_time >= next_sec {
-			MysqlDb.Exec("insert INTO `1day`(time) values(?)", time1-one_day_start)
+			results, _ := MysqlDb.Exec("insert INTO ?(time) values(?)", "secend", now_time)
+			id_sec, _ := results.LastInsertId()
+			row := MysqlDb.QueryRow("select id from trade order by id desc limit 1")
+			if err := row.Scan(&id); err != nil {
+				fmt.Printf("scan failed, err:%v", err)
+				//return
+			}
+			if last_trade_ID != id {
+				diff := id - last_trade_ID
+				rows, err := MysqlDb.Query("select id,price,volume from trade order by id desc limit 0,?", diff)
+				if err != nil {
+					log.Println(err)
+				}
+				for rows.Next() {
+					var Id int64
+					var price float64
+					var volume float64
+
+					err := rows.Scan(&Id, &price, &volume)
+					if err != nil {
+						log.Println(err)
+					}
+
+				}
+			}
+		}
+		if now_time >= next_min_start {
+
+		}
+		if now_time >= next_hours_start {
+
+		}
+		if now_time >= next_five_min_start {
+
+		}
+		if now_time >= next_threty_min_start {
+
+		}
+		if now_time >= next_twilve_hour {
+
+		}
+		if now_time >= next_one_day_start {
 
 		}
 	}
 }
-
 func Get_ticker() (out ticker, err error) {
 	//tick :=new(ticker)
 	row := MysqlDb.QueryRow("select price, volume, side from trade order by id desc limit 1")
@@ -415,6 +464,16 @@ type secend struct {
 	Id     int     `db:"id"`
 	Price  float64 `db:"price"`
 	Volume float64 `db:"volume"`
+}
+
+type kline struct {
+	Id     int   `db:"id"`
+	High   int64 `db:"high"`
+	Open   int64 `db:"open"`
+	Low    int64 `db:"low"`
+	Close  int64 `db:"close"`
+	Volume int64 `db:"volume"`
+	Time   int64 `db:"time"`
 }
 
 //
