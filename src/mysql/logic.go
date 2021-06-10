@@ -36,16 +36,23 @@ type Kline_info struct {
 }
 
 func Min_check(time1 int64, id_min chan int64) {
-	price := Get_last_price()
+	Connect()
 	//var results sql.Result
-	var out Kline_info
+	//var out Kline_info
+	out := new(Kline_info)
+	min_start := time1 % 60
 	row := MysqlDb.QueryRow("select id,time from `min` order by id desc limit 1")
 	if err := row.Scan(&out.Id, &out.Time); err != nil {
-		fmt.Printf("scan failed, err:%v", err)
+		results, err2 := MysqlDb.Exec("insert INTO `min`(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-min_start)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		id, _ := results.LastInsertId()
+		id_min <- id
+		return
 	}
-	min_start := time1 % 60
 	if out.Time != min_start {
-		results, _ := MysqlDb.Exec("insert INTO `min`(time,open,high,low) values(?,?,?,?)", time1-min_start, price, price, price)
+		results, _ := MysqlDb.Exec("insert INTO `min`(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-min_start)
 		id, _ := results.LastInsertId()
 		id_min <- id
 	} else {
@@ -56,15 +63,23 @@ func Min_check(time1 int64, id_min chan int64) {
 }
 
 func Hours_check(time1 int64, id_hour chan int64) {
-	price := Get_last_price()
-	var out Kline_info
-	row := MysqlDb.QueryRow("select id,time from ? order by id desc limit 1", "1hour")
-	if err := row.Scan(&out.Id, &out.Time); err != nil {
-		fmt.Printf("scan failed, err:%v", err)
-	}
+	Connect()
+	//var out Kline_info
+	out := new(Kline_info)
 	hours_start := time1 % 3600
+	row := MysqlDb.QueryRow("select id,time from 1hour order by id desc limit 1")
+	if err := row.Scan(&out.Id, &out.Time); err != nil {
+		results, err2 := MysqlDb.Exec("insert INTO 1hour(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-hours_start)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		id, _ := results.LastInsertId()
+		id_hour <- id
+		return
+	}
+
 	if out.Time != hours_start {
-		results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "1hour", time1-hours_start, price, price, price)
+		results, _ := MysqlDb.Exec("insert INTO `1hour`(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-hours_start)
 		id, _ := results.LastInsertId()
 		id_hour <- id
 	} else {
@@ -73,15 +88,23 @@ func Hours_check(time1 int64, id_hour chan int64) {
 	}
 }
 func Five_min_check(time1 int64, id_five_min chan int64) {
-	price := Get_last_price()
-	var out Kline_info
-	row := MysqlDb.QueryRow("select id,time from ? order by id desc limit 1", "5min")
-	if err := row.Scan(&out.Id, &out.Time); err != nil {
-		fmt.Printf("scan failed, err:%v", err)
-	}
+	Connect()
+	//var out Kline_info
+	out := new(Kline_info)
 	five_min_start := time1 % 300
+	row := MysqlDb.QueryRow("select id,time from 5min order by id desc limit 1")
+	if err := row.Scan(&out.Id, &out.Time); err != nil {
+		results, err2 := MysqlDb.Exec("insert INTO 5min(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-five_min_start)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		id, _ := results.LastInsertId()
+		id_five_min <- id
+		return
+	}
+
 	if out.Time != five_min_start {
-		results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "5min", time1-five_min_start, price, price, price)
+		results, _ := MysqlDb.Exec("insert INTO 5min(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-five_min_start)
 		id, _ := results.LastInsertId()
 		id_five_min <- id
 	} else {
@@ -91,15 +114,22 @@ func Five_min_check(time1 int64, id_five_min chan int64) {
 }
 
 func Threty_min_check(time1 int64, id_threty_min chan int64) {
-	price := Get_last_price()
-	var out Kline_info
-	row := MysqlDb.QueryRow("select id,time from ? order by id desc limit 1", "30min")
-	if err := row.Scan(&out.Id, &out.Time); err != nil {
-		fmt.Printf("scan failed, err:%v", err)
-	}
+	Connect()
+	out := new(Kline_info)
 	threty_min_start := time1 % 1800
+	row := MysqlDb.QueryRow("select id,time from 30min order by id desc limit 1")
+	if err := row.Scan(&out.Id, &out.Time); err != nil {
+		results, err2 := MysqlDb.Exec("insert INTO 30min(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-threty_min_start)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		id, _ := results.LastInsertId()
+		id_threty_min <- id
+		return
+	}
+
 	if out.Time != threty_min_start {
-		results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "30min", time1-threty_min_start, price, price, price)
+		results, _ := MysqlDb.Exec("insert INTO 30min(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-threty_min_start)
 		id, _ := results.LastInsertId()
 		id_threty_min <- id
 	} else {
@@ -109,15 +139,23 @@ func Threty_min_check(time1 int64, id_threty_min chan int64) {
 }
 
 func Twilve_hour_check(time1 int64, id_twilve_hour chan int64) {
-	price := Get_last_price()
-	var out Kline_info
-	row := MysqlDb.QueryRow("select id,time from ? order by id desc limit 1", "12hour")
-	if err := row.Scan(&out.Id, &out.Time); err != nil {
-		fmt.Printf("scan failed, err:%v", err)
-	}
+	Connect()
+	//var out Kline_info
+	out := new(Kline_info)
 	twilve_hour := time1 % (3600 * 12)
+	row := MysqlDb.QueryRow("select id,time from 12hour order by id desc limit 1")
+	if err := row.Scan(&out.Id, &out.Time); err != nil {
+		results, err2 := MysqlDb.Exec("insert INTO 12hour(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-twilve_hour)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		id, _ := results.LastInsertId()
+		id_twilve_hour <- id
+		return
+	}
+
 	if out.Time != twilve_hour {
-		results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "12hour", time1-twilve_hour, price, price, price)
+		results, _ := MysqlDb.Exec("insert INTO 12hour(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-twilve_hour)
 		id, _ := results.LastInsertId()
 		id_twilve_hour <- id
 	} else {
@@ -127,15 +165,23 @@ func Twilve_hour_check(time1 int64, id_twilve_hour chan int64) {
 }
 
 func One_day_check(time1 int64, id_day chan int64) {
-	price := Get_last_price()
-	var out Kline_info
-	row := MysqlDb.QueryRow("select id,time from ? order by id desc limit 1", "1day")
-	if err := row.Scan(&out.Id, &out.Time); err != nil {
-		fmt.Printf("scan failed, err:%v", err)
-	}
+	Connect()
+	//var out Kline_info
+	out := new(Kline_info)
 	one_day_start := time1 % (3600 * 24)
+	row := MysqlDb.QueryRow("select id,time from 1day order by id desc limit 1")
+	if err := row.Scan(&out.Id, &out.Time); err != nil {
+		results, err2 := MysqlDb.Exec("insert INTO 1day(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-one_day_start)
+		if err2 != nil {
+			fmt.Println(err2)
+		}
+		id, _ := results.LastInsertId()
+		id_day <- id
+		return
+	}
+
 	if out.Time != one_day_start {
-		results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "1day", time1-one_day_start, price, price, price)
+		results, _ := MysqlDb.Exec("insert INTO 1day(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-one_day_start)
 		id, _ := results.LastInsertId()
 		id_day <- id
 	} else {
@@ -159,4 +205,16 @@ func Sec_check(time1 int64, id_sec chan int64) {
 
 		id_sec <- out.Id
 	}
+}
+
+func Get_info(id int64, form string) kline {
+	var a kline
+	info := new(kline)
+	row := MysqlDb.QueryRow("select * from ? where id=?", id, form)
+	err := row.Scan(&info.Id, &info.High, &info.Open, &info.Low, &info.Close, &info.Volume, &info.Time)
+	if err != nil {
+		panic(err)
+	}
+	a = kline{info.Id, info.High, info.Open, info.Low, info.Close, info.Volume, info.Time}
+	return a
 }

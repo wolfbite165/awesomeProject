@@ -27,7 +27,7 @@ type Trade_out struct {
 }
 
 func InitRouter() {
-
+	mysql.Connect()
 	router := gin.Default()
 	apiR := router.Group("/api")
 	authRouter(apiR)
@@ -50,6 +50,7 @@ func InitRouter() {
 		order.POST("/get_open_order", Get_oppen_order)
 		order.POST("/cancel_order", Cancel_order)
 	}
+	go mysql.Write_kline()
 	router.Run()
 }
 
@@ -509,14 +510,6 @@ func Get_ticker(c *gin.Context) {
 		"code": 200,
 		"data": cc,
 	})
-
-}
-
-func Get_kline(c *gin.Context) {
-
-}
-
-func Write_kilne() {
 
 }
 
