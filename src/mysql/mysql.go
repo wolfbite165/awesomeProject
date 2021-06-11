@@ -44,8 +44,9 @@ type klineLevel struct {
 }
 
 type User struct {
-	Id           int64   `db:"id"`
-	Account      string  `db:"Account"`
+	Id      int64  `db:"id"`
+	Account string `db:"Account"`
+
 	Password     string  `db:"Password"`
 	Normal_Money float64 `db:"normal_Money"`
 	Normal_Coin  float64 `db:"normal_Coin"`
@@ -94,25 +95,28 @@ type trades struct {
 	Time   int64
 }
 
-func Connect() {
-	dbDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", USER_NAME, PASS_WORD, HOST, PORT, DATABASE)
-	//fmt.Println(dbDSN)
-	MysqlDb, MysqlDbErr = sql.Open("mysql", dbDSN)
-	if MysqlDbErr != nil {
-		log.Println("dbDSN: " + dbDSN)
-		panic("数据源配置不正确: " + MysqlDbErr.Error())
-	}
+func Connect() *sql.DB {
+	initMainDB.Do(func() {
+		dbDSN := fmt.Sprintf("%s:%s@tcp(%s:%s)/%s", USER_NAME, PASS_WORD, HOST, PORT, DATABASE)
+		//fmt.Println(dbDSN)
+		MysqlDb, MysqlDbErr = sql.Open("mysql", dbDSN)
+		if MysqlDbErr != nil {
+			log.Println("dbDSN: " + dbDSN)
+			panic("数据源配置不正确: " + MysqlDbErr.Error())
+		}
 
-	// 最大连接数
-	MysqlDb.SetMaxOpenConns(1000)
-	// 闲置连接数
-	MysqlDb.SetMaxIdleConns(20)
-	// 最大连接周期
-	MysqlDb.SetConnMaxLifetime(100 * time.Second)
+		// 最大连接数
+		MysqlDb.SetMaxOpenConns(1000)
+		// 闲置连接数
+		MysqlDb.SetMaxIdleConns(20)
+		// 最大连接周期
+		MysqlDb.SetConnMaxLifetime(100 * time.Second)
 
-	if MysqlDbErr = MysqlDb.Ping(); nil != MysqlDbErr {
-		panic("数据库链接失败: " + MysqlDbErr.Error())
-	}
+		if MysqlDbErr = MysqlDb.Ping(); nil != MysqlDbErr {
+			panic("数据库链接失败: " + MysqlDbErr.Error())
+		}
+	})
+	return MysqlDb
 }
 func Get_open(Account string) []Open_order {
 	var a Open_order
@@ -190,7 +194,7 @@ func Write_account(Account string, Password string, googleSk string) bool {
 			has := md5.Sum(data)
 			Password = fmt.Sprintf("%x", has)
 		}
-		_, err := MysqlDb.Exec("insert INTO Account(Account,Password,GoogleSK) values(?,?,?)", Account, Password, googleSk)
+		_, err := MysqlDb.Exec("insert INTO Account(Account,Password,GoogleSK,normal_Money) values(?,?,?,20000)", Account, Password, googleSk)
 		if err != nil {
 			fmt.Println(err)
 
@@ -561,9 +565,15 @@ func Write_kline() {
 					fmt.Printf("scan failed, err:%v", err)
 					//return
 				}
-				_, err := MysqlDb.Exec("UPDATE min set close=? where id=?", last_trade_price, form.min.Id)
+				_, err := MysqlDb.Exec("UPDATE `min` set close=? where id=?", last_trade_price, form.min.Id)
 				if err != nil {
 					panic("minstart wrong")
+				}
+				if form.min.Open == 0 {
+					_, err := MysqlDb.Exec("UPDATE `min` set open=? where id=?", last_trade_price, form.min.Id)
+					if err != nil {
+						panic("hourstart wrong")
+					}
 				}
 				results, err2 := MysqlDb.Exec("insert INTO `min`(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
 				if err2 != nil {
@@ -585,6 +595,12 @@ func Write_kline() {
 				if err != nil {
 					panic("hourstart wrong")
 				}
+				if form.hour.Open == 0 {
+					_, err := MysqlDb.Exec("UPDATE 1hour set open=? where id=?", last_trade_price, form.hour.Id)
+					if err != nil {
+						panic("hourstart wrong")
+					}
+				}
 				results, _ := MysqlDb.Exec("insert INTO 1hour(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
 				idhour, _ = results.LastInsertId()
 				form.hour = Get_info(idhour, "1hour")
@@ -601,6 +617,12 @@ func Write_kline() {
 				_, err := MysqlDb.Exec("UPDATE 5min set close=? where id=?", last_trade_price, form.five.Id)
 				if err != nil {
 					panic("fivestart wrong")
+				}
+				if form.five.Open == 0 {
+					_, err := MysqlDb.Exec("UPDATE 5min set open=? where id=?", last_trade_price, form.five.Id)
+					if err != nil {
+						panic("fivestart wrong")
+					}
 				}
 			}
 			results, _ := MysqlDb.Exec("insert INTO 5min(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
@@ -619,6 +641,13 @@ func Write_kline() {
 				if err != nil {
 					panic("thirtystart wrong")
 				}
+				if form.thirty.Open == 0 {
+					_, err := MysqlDb.Exec("UPDATE 30min set open=? where id=?", last_trade_price, form.thirty.Id)
+					if err != nil {
+						panic("thirtystart wrong")
+					}
+				}
+
 			}
 			results, _ := MysqlDb.Exec("insert INTO 30min(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
 			idthirty, _ = results.LastInsertId()
@@ -635,6 +664,12 @@ func Write_kline() {
 				_, err := MysqlDb.Exec("UPDATE 12hour set close=? where id=?", last_trade_price, form.twelve.Id)
 				if err != nil {
 					panic("twelvestart wrong")
+				}
+				if form.twelve.Open == 0 {
+					_, err := MysqlDb.Exec("UPDATE 12hour set open=? where id=?", last_trade_price, form.twelve.Id)
+					if err != nil {
+						panic("fivestart wrong")
+					}
 				}
 				results, _ := MysqlDb.Exec("insert INTO 12hour(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
 				idtwelve, _ = results.LastInsertId()
@@ -654,6 +689,12 @@ func Write_kline() {
 				if err != nil {
 					panic("daystart wrong")
 				}
+				if form.day.Open == 0 {
+					_, err := MysqlDb.Exec("UPDATE 1day set open=? where id=?", last_trade_price, form.day.Id)
+					if err != nil {
+						panic("daystart wrong")
+					}
+				}
 				results, _ := MysqlDb.Exec("insert INTO 1day(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
 				idday, _ = results.LastInsertId()
 				form.day = Get_info(idday, "1day")
@@ -672,6 +713,25 @@ func Get_ticker() (out ticker, err error) {
 	return
 
 }
+func Get_kline(form string, size int64) []kline {
+	var a []kline
+	out := new(kline)
+	stmt := fmt.Sprintf("select * from %s order by id desc limit %d ", form, size)
+	stmt2 := fmt.Sprintf("select * from %s order by id desc ", form)
+	rows, err := MysqlDb.Query(stmt)
+	if err != nil {
+		log.Println(err)
+		rows, _ = MysqlDb.Query(stmt2)
+	}
+	for rows.Next() {
+		err = rows.Scan(&out.Id, &out.High, &out.Open, &out.Low, &out.Close, &out.Volume, &out.Time)
+		if err != nil {
+			panic(err)
+		}
+		a = append(a, kline{out.Id, out.High, out.Open, out.Low, out.Close, out.Volume, out.Time})
+	}
+	return a
+}
 
 type ticker struct {
 	Price  float64 `db:"price"`
@@ -686,13 +746,13 @@ type acc_info struct {
 }
 
 type kline struct {
-	Id     int64   `db:"id"`
-	High   float64 `db:"high"`
-	Open   float64 `db:"open"`
-	Low    float64 `db:"low"`
-	Close  float64 `db:"close"`
-	Volume float64 `db:"volume"`
-	Time   int64   `db:"time"`
+	Id     int64   `db:"id" json:"id"`
+	High   float64 `db:"high" json:"high"`
+	Open   float64 `db:"open" json:"open"`
+	Low    float64 `db:"low" json:"low"`
+	Close  float64 `db:"close" json:"close"`
+	Volume float64 `db:"volume" json:"volume"`
+	Time   int64   `db:"time" json:"time"`
 }
 
 type all_kline struct {
@@ -703,35 +763,3 @@ type all_kline struct {
 	twelve kline
 	day    kline
 }
-
-//
-//var leftOrder Order
-//sellIndex := 0
-//buyIndex := 1
-//var okIds []int
-//
-//leftOrder = buy[buyIndex]
-//for {
-//	if len(sell) == sellIndex + 1 &&  len(buy) == buyIndex + 1 && sell[sellIndex].Price > buy[buyIndex].Price {
-//		break
-//	}
-//
-//	if leftOrder.Side == "buy" {
-//		if sell[sellIndex].Volume > leftOrder.Volume{
-//
-//			sell[sellIndex].Volume -= leftOrder.Volume
-//			leftOrder = sell[sellIndex]
-//		} else {
-//
-//
-//
-//
-//			sellIndex++
-//		}
-//
-//	} else if leftOrder.Side == "sell"{
-//
-//	} else {
-//		return err
-//	}
-//}

@@ -19,7 +19,6 @@ type wallet struct {
 type Out struct {
 	Price  float64 `json:"price"`
 	Volume float64 `json:"volume"`
-	Side   string  `json:"side"`
 }
 type Trade_out struct {
 	sell Out
@@ -42,6 +41,7 @@ func InitRouter() {
 		commonR.GET("/get_depth", Get_depth)
 		commonR.GET("/get_trade_history", Get_trade_history)
 		commonR.GET("/ticker", Get_ticker)
+		commonR.GET("/kline", Get_kline)
 	}
 	{
 		order := apiR.Group("/order")
@@ -458,26 +458,29 @@ func Cancel_order(c *gin.Context) {
 func Get_depth(c *gin.Context) {
 	var buy1 []Out
 	var sell1 []Out
-	var out [][]Out
+	var dep depth
 	mysql.Connect()
 	buy, sell := mysql.Get_side_info()
 	println(len(buy))
 
 	for i := 0; i < len(buy); i++ {
-		buy1 = append(buy1, Out{buy[i].Price, buy[i].Volume, buy[i].Side})
+		buy1 = append(buy1, Out{buy[i].Price, buy[i].Volume})
 		//fmt.Printf("%+v", buy1)
 
 	}
 	for i := 0; i < len(sell); i++ {
-		sell1 = append(sell1, Out{sell[i].Price, sell[i].Volume, sell[i].Side})
+		sell1 = append(sell1, Out{sell[i].Price, sell[i].Volume})
 	}
 	fmt.Println(buy1, sell1)
-	out = append(out, buy1, sell1)
-	fmt.Printf("%+v", out)
+	dep.Bids = buy1
+	dep.Asks = sell1
+	fmt.Println(dep)
+	//out = append(out, buy1, sell1)
+	//fmt.Printf("%+v", out)
 	//ss:=
 	c.JSON(200, gin.H{
 		"code": 200,
-		"data": out,
+		"data": dep,
 	})
 
 }
@@ -513,6 +516,17 @@ func Get_ticker(c *gin.Context) {
 
 }
 
+func Get_kline(c *gin.Context) {
+	mysql.Connect()
+	size, _ := strconv.ParseInt(c.DefaultQuery("size", "1000"), 0, 64)
+	form := c.Query("form")
+	back := mysql.Get_kline(form, size)
+	c.JSON(200, gin.H{
+		"code": 200,
+		"data": back,
+	})
+}
+
 type create struct {
 	Price  float64 `json:"price"`
 	Volume float64 `json:"volume"`
@@ -520,6 +534,10 @@ type create struct {
 }
 type cancel struct {
 	Id int64 `json:"id"`
+}
+type depth struct {
+	Bids []Out `json:"bids"`
+	Asks []Out `json:"asks"`
 }
 
 //func Deal_orders(sleep
