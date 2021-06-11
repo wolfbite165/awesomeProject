@@ -1,6 +1,7 @@
 package mysql
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -11,5 +12,8 @@ func Test_mysql(t *testing.T) {
 	//Get_side_info()
 	//Write_trade_info(1,100,"buy",1314,"buyer","seller")
 	//Write_order_info(15, 200, "dealed")
-	Write_kline()
+	//Write_kline()
+	a := Get_info(5, "30min")
+
+	fmt.Println(a)
 }

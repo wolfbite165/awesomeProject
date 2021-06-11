@@ -171,6 +171,7 @@ func One_day_check(time1 int64, id_day chan int64) {
 	one_day_start := time1 % (3600 * 24)
 	row := MysqlDb.QueryRow("select id,time from 1day order by id desc limit 1")
 	if err := row.Scan(&out.Id, &out.Time); err != nil {
+		fmt.Println(err)
 		results, err2 := MysqlDb.Exec("insert INTO 1day(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-one_day_start)
 		if err2 != nil {
 			fmt.Println(err2)
@@ -210,7 +211,10 @@ func Sec_check(time1 int64, id_sec chan int64) {
 func Get_info(id int64, form string) kline {
 	var a kline
 	info := new(kline)
-	row := MysqlDb.QueryRow("select * from ? where id=?", id, form)
+	stmt := fmt.Sprintf("select * from %s where id=%d", form, id)
+
+	row := MysqlDb.QueryRow(stmt)
+	//row := MysqlDb.QueryRow("select * from 30min where id=5")
 	err := row.Scan(&info.Id, &info.High, &info.Open, &info.Low, &info.Close, &info.Volume, &info.Time)
 	if err != nil {
 		panic(err)

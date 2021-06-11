@@ -426,7 +426,7 @@ func Write_kline() {
 		next_twilve_hour := last_twilve_hour + (3600 * 12)
 		next_one_day_start := last_one_day_start + (3600 * 24)
 		if now_time >= next_sec {
-			results, _ := MysqlDb.Exec("insert INTO ?(time) values(?)", "secend", now_time)
+			results, _ := MysqlDb.Exec("insert INTO secend(time) values(?)", now_time)
 			id_sec, _ := results.LastInsertId()
 			row := MysqlDb.QueryRow("select id from trade order by id desc limit 1")
 			if err := row.Scan(&id); err != nil {
