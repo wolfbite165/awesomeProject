@@ -51,7 +51,7 @@ func Min_check(time1 int64, id_min chan int64) {
 		id_min <- id
 		return
 	}
-	if out.Time != min_start {
+	if out.Time != time1-min_start {
 		results, _ := MysqlDb.Exec("insert INTO `min`(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-min_start)
 		id, _ := results.LastInsertId()
 		id_min <- id
@@ -78,7 +78,7 @@ func Hours_check(time1 int64, id_hour chan int64) {
 		return
 	}
 
-	if out.Time != hours_start {
+	if out.Time != time1-hours_start {
 		results, _ := MysqlDb.Exec("insert INTO `1hour`(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-hours_start)
 		id, _ := results.LastInsertId()
 		id_hour <- id
@@ -103,7 +103,7 @@ func Five_min_check(time1 int64, id_five_min chan int64) {
 		return
 	}
 
-	if out.Time != five_min_start {
+	if out.Time != time1-five_min_start {
 		results, _ := MysqlDb.Exec("insert INTO 5min(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-five_min_start)
 		id, _ := results.LastInsertId()
 		id_five_min <- id
@@ -128,7 +128,7 @@ func Threty_min_check(time1 int64, id_threty_min chan int64) {
 		return
 	}
 
-	if out.Time != threty_min_start {
+	if out.Time != time1-threty_min_start {
 		results, _ := MysqlDb.Exec("insert INTO 30min(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-threty_min_start)
 		id, _ := results.LastInsertId()
 		id_threty_min <- id
@@ -146,6 +146,7 @@ func Twilve_hour_check(time1 int64, id_twilve_hour chan int64) {
 	row := MysqlDb.QueryRow("select id,time from 12hour order by id desc limit 1")
 	if err := row.Scan(&out.Id, &out.Time); err != nil {
 		results, err2 := MysqlDb.Exec("insert INTO 12hour(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-twilve_hour)
+		fmt.Println("进入这个3")
 		if err2 != nil {
 			fmt.Println(err2)
 		}
@@ -154,8 +155,9 @@ func Twilve_hour_check(time1 int64, id_twilve_hour chan int64) {
 		return
 	}
 
-	if out.Time != twilve_hour {
+	if out.Time != time1-twilve_hour {
 		results, _ := MysqlDb.Exec("insert INTO 12hour(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-twilve_hour)
+		fmt.Println("进入这个4")
 		id, _ := results.LastInsertId()
 		id_twilve_hour <- id
 	} else {
@@ -173,6 +175,7 @@ func One_day_check(time1 int64, id_day chan int64) {
 	if err := row.Scan(&out.Id, &out.Time); err != nil {
 		fmt.Println(err)
 		results, err2 := MysqlDb.Exec("insert INTO 1day(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-one_day_start)
+		fmt.Println("进入这个1")
 		if err2 != nil {
 			fmt.Println(err2)
 		}
@@ -180,9 +183,10 @@ func One_day_check(time1 int64, id_day chan int64) {
 		id_day <- id
 		return
 	}
-
-	if out.Time != one_day_start {
+	//fmt.Println(out.Time,one_day_start)
+	if out.Time != time1-one_day_start {
 		results, _ := MysqlDb.Exec("insert INTO 1day(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", time1-one_day_start)
+		fmt.Println("进入这个2")
 		id, _ := results.LastInsertId()
 		id_day <- id
 	} else {
@@ -198,7 +202,7 @@ func Sec_check(time1 int64, id_sec chan int64) {
 		fmt.Printf("scan failed, err:%v", err)
 	}
 	one_day_start := time1 % (3600 * 24)
-	if out.Time != one_day_start {
+	if out.Time != time1-one_day_start {
 		results, _ := MysqlDb.Exec("insert INTO secend(time) values(?)", time1-one_day_start)
 		id, _ := results.LastInsertId()
 		id_sec <- id

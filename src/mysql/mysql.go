@@ -415,8 +415,11 @@ func Write_kline() {
 		Get_info(idday, "1day")}
 
 	last_trade_ID := id
+	var write_time int64
+	write_time = 0
 
 	for {
+
 		now_time := time.Now().Unix()
 		next_sec := last_time + 1
 		next_min_start := last_min_start + 60
@@ -425,201 +428,237 @@ func Write_kline() {
 		next_five_min_start := last_five_min_start + 300
 		next_twilve_hour := last_twilve_hour + (3600 * 12)
 		next_one_day_start := last_one_day_start + (3600 * 24)
+		//fmt.Println(now_time, next_sec)
+		//fmt.Println(write_time,now_time)
 		if now_time >= next_sec {
-			results, _ := MysqlDb.Exec("insert INTO secend(time) values(?)", now_time)
-			id_sec, _ := results.LastInsertId()
-			row := MysqlDb.QueryRow("select id from trade order by id desc limit 1")
-			if err := row.Scan(&id); err != nil {
-				fmt.Printf("scan failed, err:%v", err)
-				//return
-			}
-			if last_trade_ID != id {
-				diff := id - last_trade_ID
-				rows, err := MysqlDb.Query("select id,price,volume from trade order by id desc limit 0,?", diff)
+			//fmt.Println("进入这个一次")
+			if write_time != now_time {
+				//fmt.Println("现在可以写入一次")
+				results, err := MysqlDb.Exec("insert INTO secend(`time`,`open`,high,low,`close`,volume) values(?,0,0,0,0,0)", now_time)
+				write_time = now_time
 				if err != nil {
-					log.Println(err)
+					fmt.Println(err)
 				}
-				for rows.Next() {
-					var Id int64
-					var price float64
-					var volume float64
 
-					errs := rows.Scan(&Id, &price, &volume)
-					if errs != nil {
-						log.Println(errs)
+				id_sec, _ := results.LastInsertId()
+				row := MysqlDb.QueryRow("select id from trade order by id desc limit 1")
+				if err := row.Scan(&id); err != nil {
+					fmt.Printf("scan failed, err:%v", err)
+					//return
+				}
+				if last_trade_ID != id {
+					fmt.Println("进入许多成交单的循环")
+					diff := id - last_trade_ID
+					rows, err := MysqlDb.Query("select id,price,volume from trade order by id desc limit 0,?", diff)
+					if err != nil {
+						log.Println(err)
 					}
-					if form.min.Open == 0 {
-						_, err = MysqlDb.Exec("UPDATE ? set open=?,high=?,low=? where id=?", "min", form.min.Id, price, price)
-						form.min.Open = price
-					}
-					if form.five.Open == 0 {
-						_, err = MysqlDb.Exec("UPDATE ? set open=?,high=?,low=? where id=?", "five", form.five.Id, price, price)
-						form.five.Open = price
-					}
-					if form.thirty.Open == 0 {
-						_, err = MysqlDb.Exec("UPDATE ? set open=?,high=?,low=? where id=?", "thirty", form.thirty.Id, price, price)
-						form.thirty.Open = price
-					}
-					if form.hour.Open == 0 {
-						_, err = MysqlDb.Exec("UPDATE ? set open=?,high=?,low=? where id=?", "hour", form.hour.Id, price, price)
-						form.hour.Open = price
-					}
-					if form.twelve.Open == 0 {
-						_, err = MysqlDb.Exec("UPDATE ? set open=?,high=?,low=? where id=?", "twelve", form.twelve.Id, price, price)
-						form.twelve.Open = price
-					}
-					if form.day.Open == 0 {
-						_, err = MysqlDb.Exec("UPDATE ? set open=?,high=?,low=? where id=?", "day", form.day.Id, price, price)
-						form.day.Open = price
-					}
+					for rows.Next() {
+						var Id int64
+						var price float64
+						var volume float64
 
-					_, err = MysqlDb.Exec("UPDATE ? set high=?,open=?,low=?,close=?where id=?", "secend", price, price, price, price, id_sec)
-					if price > form.min.High {
-						_, err = MysqlDb.Exec("UPDATE ? set high=? where id=?", "min", form.min.Id)
-						form.min.High = price
-					}
-					if price > form.five.High {
-						_, err = MysqlDb.Exec("UPDATE ? set high=? where id=?", "5min", form.five.Id)
-						form.five.High = price
-					}
-					if price > form.thirty.High {
-						_, err = MysqlDb.Exec("UPDATE ? set high=? where id=?", "30min", form.thirty.Id)
-						form.thirty.High = price
-					}
-					if price > form.hour.High {
-						_, err = MysqlDb.Exec("UPDATE ? set high=? where id=?", "1hour", form.hour.Id)
-						form.hour.High = price
-					}
-					if price > form.twelve.High {
-						_, err = MysqlDb.Exec("UPDATE ? set high=? where id=?", "12hour", form.twelve.Id)
-						form.twelve.High = price
-					}
-					if price > form.day.High {
-						_, err = MysqlDb.Exec("UPDATE ? set high=? where id=?", "1day", form.day.Id)
-						form.day.High = price
-					}
+						errs := rows.Scan(&Id, &price, &volume)
+						if errs != nil {
+							log.Println(errs)
+						}
+						if form.min.Open == 0 {
+							_, err = MysqlDb.Exec("UPDATE min set open=?,high=?,low=? where id=?", price, price, price, form.min.Id)
+							form.min.Open = price
+						}
+						if form.five.Open == 0 {
+							_, err = MysqlDb.Exec("UPDATE 5min set open=?,high=?,low=? where id=?", price, price, price, form.five.Id)
+							form.five.Open = price
+						}
+						if form.thirty.Open == 0 {
+							_, err = MysqlDb.Exec("UPDATE 30min set open=?,high=?,low=? where id=?", price, price, price, form.thirty.Id)
+							form.thirty.Open = price
+						}
+						if form.hour.Open == 0 {
+							_, err = MysqlDb.Exec("UPDATE 1hour set open=?,high=?,low=? where id=?", price, price, price, form.hour.Id)
+							form.hour.Open = price
+						}
+						if form.twelve.Open == 0 {
+							_, err = MysqlDb.Exec("UPDATE 12hour set open=?,high=?,low=? where id=?", price, price, price, form.twelve.Id)
+							form.twelve.Open = price
+						}
+						if form.day.Open == 0 {
+							_, err = MysqlDb.Exec("UPDATE 1day set open=?,high=?,low=? where id=?", price, price, price, form.day.Id)
+							form.day.Open = price
+						}
 
-					if price < form.min.Low {
-						_, err = MysqlDb.Exec("UPDATE ? set low=? where id=?", "min", form.min.Id)
-					}
-					form.min.Low = price
-					if price < form.five.Low {
-						_, err = MysqlDb.Exec("UPDATE ? set low=? where id=?", "5min", form.five.Id)
-						form.five.Low = price
-					}
-					if price < form.thirty.Low {
-						_, err = MysqlDb.Exec("UPDATE ? set low=? where id=?", "30min", form.thirty.Id)
-						form.thirty.Low = price
-					}
-					if price < form.hour.Low {
-						_, err = MysqlDb.Exec("UPDATE ? set low=? where id=?", "1hour", form.hour.Id)
-						form.hour.Low = price
-					}
-					if price < form.twelve.Low {
-						_, err = MysqlDb.Exec("UPDATE ? set low=? where id=?", "12hour", form.twelve.Id)
-						form.twelve.Low = price
-					}
-					if price < form.day.Low {
-						_, err = MysqlDb.Exec("UPDATE ? set low=? where id=?", "1day", form.day.Id)
-						form.twelve.Low = price
-					}
+						_, err = MysqlDb.Exec("UPDATE secend set high=?,open=?,low=?,close=?where id=?", price, price, price, price, id_sec)
+						if price > form.min.High {
+							_, err = MysqlDb.Exec("UPDATE min set high=? where id=?", price, form.min.Id)
+							form.min.High = price
+						}
+						if price > form.five.High {
+							_, err = MysqlDb.Exec("UPDATE 5min set high=? where id=?", price, form.five.Id)
+							form.five.High = price
+						}
+						if price > form.thirty.High {
+							_, err = MysqlDb.Exec("UPDATE 30min set high=? where id=?", price, form.thirty.Id)
+							form.thirty.High = price
+						}
+						if price > form.hour.High {
+							_, err = MysqlDb.Exec("UPDATE 1hour set high=? where id=?", price, form.hour.Id)
+							form.hour.High = price
+						}
+						if price > form.twelve.High {
+							_, err = MysqlDb.Exec("UPDATE 12hour set high=? where id=?", price, form.twelve.Id)
+							form.twelve.High = price
+						}
+						if price > form.day.High {
+							_, err = MysqlDb.Exec("UPDATE 1day set high=? where id=?", price, form.day.Id)
+							form.day.High = price
+						}
 
-					_, err = MysqlDb.Exec("UPDATE min set volume=volume+? where id=?", volume, form.min.Id)
-					_, err = MysqlDb.Exec("UPDATE 5min set volume=volume+? where id=?", volume, form.five.Id)
-					_, err = MysqlDb.Exec("UPDATE 30min set volume=volume+? where id=?", volume, form.thirty.Id)
-					_, err = MysqlDb.Exec("UPDATE 1hour set volume=volume+? where id=?", volume, form.hour.Id)
-					_, err = MysqlDb.Exec("UPDATE 12hour set volume=volume+? where id=?", volume, form.twelve.Id)
-					_, err = MysqlDb.Exec("UPDATE 1day set volume=volume+? where id=?", volume, form.day.Id)
-					_, err = MysqlDb.Exec("UPDATE secend set volume=volume+? where id=?", volume, id_sec)
+						if price < form.min.Low {
+							_, err = MysqlDb.Exec("UPDATE min set low=? where id=?", price, form.min.Id)
+						}
+						form.min.Low = price
+						if price < form.five.Low {
+							_, err = MysqlDb.Exec("UPDATE 5min set low=? where id=?", price, form.five.Id)
+							form.five.Low = price
+						}
+						if price < form.thirty.Low {
+							_, err = MysqlDb.Exec("UPDATE 30min set low=? where id=?", price, form.thirty.Id)
+							form.thirty.Low = price
+						}
+						if price < form.hour.Low {
+							_, err = MysqlDb.Exec("UPDATE 1hour set low=? where id=?", price, form.hour.Id)
+							form.hour.Low = price
+						}
+						if price < form.twelve.Low {
+							_, err = MysqlDb.Exec("UPDATE 12hour set low=? where id=?", price, form.twelve.Id)
+							form.twelve.Low = price
+						}
+						if price < form.day.Low {
+							_, err = MysqlDb.Exec("UPDATE 1day set low=? where id=?", price, form.day.Id)
+							form.twelve.Low = price
+						}
+
+						_, err = MysqlDb.Exec("UPDATE min set volume=volume+? where id=?", volume, form.min.Id)
+						_, err = MysqlDb.Exec("UPDATE 5min set volume=volume+? where id=?", volume, form.five.Id)
+						_, err = MysqlDb.Exec("UPDATE 30min set volume=volume+? where id=?", volume, form.thirty.Id)
+						_, err = MysqlDb.Exec("UPDATE 1hour set volume=volume+? where id=?", volume, form.hour.Id)
+						_, err = MysqlDb.Exec("UPDATE 12hour set volume=volume+? where id=?", volume, form.twelve.Id)
+						_, err = MysqlDb.Exec("UPDATE 1day set volume=volume+? where id=?", volume, form.day.Id)
+						_, err = MysqlDb.Exec("UPDATE secend set volume=volume+? where id=?", volume, id_sec)
+
+					}
 
 				}
+				last_trade_ID = id
 				last_time = now_time
 			}
-
 		}
+
 		if now_time >= next_min_start {
-			row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
-			if err := row.Scan(&last_trade_price); err != nil {
-				fmt.Printf("scan failed, err:%v", err)
-				//return
+			if form.min.Time != now_time {
+				row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
+				if err := row.Scan(&last_trade_price); err != nil {
+					fmt.Printf("scan failed, err:%v", err)
+					//return
+				}
+				_, err := MysqlDb.Exec("UPDATE min set close=? where id=?", last_trade_price, form.min.Id)
+				if err != nil {
+					panic("minstart wrong")
+				}
+				results, err2 := MysqlDb.Exec("insert INTO `min`(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
+				if err2 != nil {
+					fmt.Println(err2)
+				}
+				idmin, _ = results.LastInsertId()
+				form.min = Get_info(idmin, "min")
+				last_min_start += 60
 			}
-			_, err := MysqlDb.Exec("UPDATE ? set close=? where id=?", "min", last_trade_price, form.min.Id)
-			if err != nil {
-				panic("minstart wrong")
-			}
-			results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "min", now_time, 0, 0, 0)
-			idmin, _ = results.LastInsertId()
-			form.min = Get_info(idmin, "min")
 		}
 		if now_time >= next_hours_start {
-			row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
-			if err := row.Scan(&last_trade_price); err != nil {
-				fmt.Printf("scan failed, err:%v", err)
-				//return
+			if form.hour.Time != now_time {
+				row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
+				if err := row.Scan(&last_trade_price); err != nil {
+					fmt.Printf("scan failed, err:%v", err)
+					//return
+				}
+				_, err := MysqlDb.Exec("UPDATE 1hour set close=? where id=?", last_trade_price, form.hour.Id)
+				if err != nil {
+					panic("hourstart wrong")
+				}
+				results, _ := MysqlDb.Exec("insert INTO 1hour(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
+				idhour, _ = results.LastInsertId()
+				form.hour = Get_info(idhour, "1hour")
+				last_hours_start += 3600
 			}
-			_, err := MysqlDb.Exec("UPDATE ? set close=? where id=?", "1hour", last_trade_price, form.hour.Id)
-			if err != nil {
-				panic("hourstart wrong")
-			}
-			results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "1hour", now_time, 0, 0, 0)
-			idhour, _ = results.LastInsertId()
-			form.hour = Get_info(idhour, "1hour")
 		}
 		if now_time >= next_five_min_start {
-			row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
-			if err := row.Scan(&last_trade_price); err != nil {
-				fmt.Printf("scan failed, err:%v", err)
-				//return
+			if form.five.Time != now_time {
+				row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
+				if err := row.Scan(&last_trade_price); err != nil {
+					fmt.Printf("scan failed, err:%v", err)
+					//return
+				}
+				_, err := MysqlDb.Exec("UPDATE 5min set close=? where id=?", last_trade_price, form.five.Id)
+				if err != nil {
+					panic("fivestart wrong")
+				}
 			}
-			_, err := MysqlDb.Exec("UPDATE ? set close=? where id=?", "5min", last_trade_price, form.five.Id)
-			if err != nil {
-				panic("fivestart wrong")
-			}
-			results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "5min", now_time, 0, 0, 0)
+			results, _ := MysqlDb.Exec("insert INTO 5min(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
 			idfive, _ = results.LastInsertId()
 			form.five = Get_info(idfive, "5min")
+			last_five_min_start += 300
 		}
 		if now_time >= next_threty_min_start {
-			row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
-			if err := row.Scan(&last_trade_price); err != nil {
-				fmt.Printf("scan failed, err:%v", err)
-				//return
+			if form.thirty.Time != now_time {
+				row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
+				if err := row.Scan(&last_trade_price); err != nil {
+					fmt.Printf("scan failed, err:%v", err)
+					//return
+				}
+				_, err := MysqlDb.Exec("UPDATE 30min set close=? where id=?", last_trade_price, form.thirty.Id)
+				if err != nil {
+					panic("thirtystart wrong")
+				}
 			}
-			_, err := MysqlDb.Exec("UPDATE ? set close=? where id=?", "30min", last_trade_price, form.thirty.Id)
-			if err != nil {
-				panic("thirtystart wrong")
-			}
-			results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "30min", now_time, 0, 0, 0)
+			results, _ := MysqlDb.Exec("insert INTO 30min(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
 			idthirty, _ = results.LastInsertId()
 			form.thirty = Get_info(idthirty, "30min")
+			last_threty_min_start += 1800
 		}
 		if now_time >= next_twilve_hour {
-			row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
-			if err := row.Scan(&last_trade_price); err != nil {
-				fmt.Printf("scan failed, err:%v", err)
-				//return
+			if form.twelve.Time != now_time {
+				row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
+				if err := row.Scan(&last_trade_price); err != nil {
+					fmt.Printf("scan failed, err:%v", err)
+					//return
+				}
+				_, err := MysqlDb.Exec("UPDATE 12hour set close=? where id=?", last_trade_price, form.twelve.Id)
+				if err != nil {
+					panic("twelvestart wrong")
+				}
+				results, _ := MysqlDb.Exec("insert INTO 12hour(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
+				idtwelve, _ = results.LastInsertId()
+				form.twelve = Get_info(idtwelve, "12hour")
+				last_twilve_hour += 3600 * 12
 			}
-			_, err := MysqlDb.Exec("UPDATE ? set close=? where id=?", "12hour", last_trade_price, form.twelve.Id)
-			if err != nil {
-				panic("twelvestart wrong")
-			}
-			results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "12hour", now_time, 0, 0, 0)
-			idtwelve, _ = results.LastInsertId()
-			form.twelve = Get_info(idtwelve, "12hour")
 		}
+
 		if now_time >= next_one_day_start {
-			row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
-			if err := row.Scan(&last_trade_price); err != nil {
-				fmt.Printf("scan failed, err:%v", err)
-				//return
+			if form.day.Time != now_time {
+				row := MysqlDb.QueryRow("select price from trade order by id desc limit 1")
+				if err := row.Scan(&last_trade_price); err != nil {
+					fmt.Printf("scan failed, err:%v", err)
+					//return
+				}
+				_, err := MysqlDb.Exec("UPDATE 1day set close=? where id=?", last_trade_price, form.day.Id)
+				if err != nil {
+					panic("daystart wrong")
+				}
+				results, _ := MysqlDb.Exec("insert INTO 1day(time,open,high,low) values(?,?,?,?)", now_time, 0, 0, 0)
+				idday, _ = results.LastInsertId()
+				form.day = Get_info(idday, "1day")
+				last_one_day_start += 3600 * 24
 			}
-			_, err := MysqlDb.Exec("UPDATE ? set close=? where id=?", "1day", last_trade_price, form.day.Id)
-			if err != nil {
-				panic("daystart wrong")
-			}
-			results, _ := MysqlDb.Exec("insert INTO ?(time,open,high,low) values(?,?,?,?)", "1day", now_time, 0, 0, 0)
-			idday, _ = results.LastInsertId()
-			form.day = Get_info(idday, "1day")
 		}
 	}
 }
@@ -644,11 +683,6 @@ type acc_info struct {
 	Pwd     string `db:"Password"`
 	Google  string `db:"GoogleSK"`
 	Id      int    `db:"id"`
-}
-type secend struct {
-	Id     int     `db:"id"`
-	Price  float64 `db:"price"`
-	Volume float64 `db:"volume"`
 }
 
 type kline struct {

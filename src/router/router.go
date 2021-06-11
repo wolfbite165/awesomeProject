@@ -197,7 +197,7 @@ func create_order(c *gin.Context) {
 							if volume < buy[buyindex].Volume {
 
 								c.JSON(200, gin.H{
-									"code":     202,
+									"code":     200,
 									"message":  "success",
 									"order_id": id,
 								})
@@ -211,7 +211,7 @@ func create_order(c *gin.Context) {
 							if volume == buy[buyindex].Volume {
 								//id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id)
 								c.JSON(200, gin.H{
-									"code":     203,
+									"code":     200,
 									"message":  "success",
 									"order_id": id,
 								})
@@ -248,7 +248,7 @@ func create_order(c *gin.Context) {
 							//mysql.Write_info(account, info.Normal_Money, info.Normal_Coin-volume, info.Lock_money, info.Lock_coin+volume)
 							//id := mysql.Create_order(account, price, volume, side, "online", t, info.Id)
 							c.JSON(200, gin.H{
-								"code":     204,
+								"code":     200,
 								"message":  "success",
 								"order_id": id,
 							})
@@ -271,7 +271,7 @@ func create_order(c *gin.Context) {
 						t = time.Now().Unix()
 						mysql.Write_info(account, info.Normal_Money-use, info.Normal_Coin, info.Lock_money+use, info.Lock_coin)
 						id := mysql.Create_order(account, price, volume, side, "online", t, info.Id, volume)
-						c.JSON(206, gin.H{
+						c.JSON(200, gin.H{
 							"code":     200,
 							"message":  "success",
 							"order_id": id,
@@ -304,7 +304,7 @@ func create_order(c *gin.Context) {
 							if volume == sell[sellindex].Volume {
 								//id := mysql.Create_order(account, price, volume, side, "dealed", t, info.Id, volume)
 								c.JSON(200, gin.H{
-									"code":     207,
+									"code":     200,
 									"message":  "success",
 									"order_id": id,
 								})
