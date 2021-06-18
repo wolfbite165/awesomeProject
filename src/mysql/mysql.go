@@ -451,7 +451,7 @@ func Write_kline() {
 					//return
 				}
 				if last_trade_ID != id {
-					fmt.Println("进入许多成交单的循环")
+					//fmt.Println("进入许多成交单的循环")
 					diff := id - last_trade_ID
 					rows, err := MysqlDb.Query("select id,price,volume from trade order by id desc limit 0,?", diff)
 					if err != nil {
